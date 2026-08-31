@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roles &amp; Access Control — Product Studio | VeriDex</title>
+  <meta name="description" content="Manage users, roles, permissions, and platform-level configuration.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .tabs-nav { display: flex; gap: var(--space-5); border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-4); padding: 0 var(--space-5); }
+    .tab-btn { padding: var(--space-3) 0; font-size: 14px; font-weight: 500; color: var(--color-muted); border-bottom: 2px solid transparent; cursor: pointer; user-select: none; transition: color .2s, border-color .2s; }
+    .tab-btn:hover { color: var(--color-ink); }
+    .tab-btn.active { color: var(--color-brand); border-bottom-color: var(--color-brand); font-weight: 600; }
+    .tab-pane { display: none; padding: 0 var(--space-5) var(--space-6); }
+    .tab-pane.active { display: block; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .data-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr { cursor: pointer; transition: background .15s; }
+    .data-table tbody tr:hover { background: #F8FAFF; }
+
+    .role-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: .3px; }
+    .role-pm { background: #1A4F8A; } .role-actuary { background: #15803D; } .role-uw { background: #7C3AED; }
+    .role-comp { background: #B45309; } .role-admin { background: #DC2626; } .role-pub { background: #0369A1; } .role-auditor { background: #6B7280; }
+
+    .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .status-active { background: #DCFCE7; color: var(--color-success); }
+    .status-invited { background: #FEF9C3; color: var(--color-warning); }
+    .status-suspended { background: #FEE2E2; color: var(--color-danger); }
+
+    .user-cell { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--color-brand-light); color: var(--color-brand); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+
+    .matrix-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .matrix-table th { text-align: center; padding: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); border-left: 1px solid var(--color-border); }
+    .matrix-table th:first-child { text-align: left; border-left: none; width: 220px; }
+    .matrix-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border); border-left: 1px solid var(--color-border); text-align: center; font-weight: 600; }
+    .matrix-table td:first-child { text-align: left; border-left: none; font-weight: 500; padding-left: 16px; }
+    .matrix-table tr.group-header td { background: var(--color-surface); font-weight: 700; text-transform: uppercase; font-size: 11px; color: var(--color-brand); border-left: none; text-align: left; padding: 12px 10px; letter-spacing: .3px; }
+    .matrix-table tr:last-child td { border-bottom: none; }
+    .perm-check { color: var(--color-success); font-size: 14px; }
+    .perm-read { color: var(--color-brand); font-family: monospace; }
+    .perm-none { color: var(--color-disabled); }
+    .perm-limit { color: var(--color-warning); font-family: monospace; cursor: help; }
+
+    .settings-section { margin-bottom: var(--space-6); }
+    .settings-title { font-size: 16px; font-weight: 600; margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); padding-bottom: 8px; color: var(--color-ink); }
+    .settings-row { display: grid; grid-template-columns: 260px 1fr; gap: var(--space-4); align-items: center; border-bottom: 1px solid var(--color-border); padding: 14px 0; font-size: 13px; }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-label { font-weight: 600; color: var(--color-ink); }
+    .settings-hint { font-size: 11px; color: var(--color-muted); margin-top: 2px; }
+
+    /* Drawers */
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.4); backdrop-filter: blur(2px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .3s; }
+    .drawer { position: fixed; top: 0; right: -680px; width: 680px; height: 100vh; background: #fff; z-index: 1001; box-shadow: -4px 0 24px rgba(0,0,0,0.12); display: flex; flex-direction: column; transition: right .3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .drawer.open { right: 0; }
+    .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+    .drawer-header { padding: var(--space-5); border-bottom: 1px solid var(--color-border); background: var(--color-surface); display: flex; align-items: flex-start; justify-content: space-between; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-5); }
+    .drawer-footer { padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border); background: #fff; display: flex; justify-content: space-between; align-items: center; }
+    .drawer-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); }
+    .drawer-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--color-muted); letter-spacing: .5px; margin-bottom: 14px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal { background: #fff; border-radius: 12px; width: 520px; max-width: 92vw; box-shadow: 0 24px 80px rgba(0,0,0,.2); display: flex; flex-direction: column; }
+    .modal-header { padding: 24px 24px 16px; border-bottom: 1px solid var(--color-border); }
+    .modal-title { font-size: 18px; font-weight: 700; color: var(--color-ink); margin-bottom: 4px; }
+    .modal-desc { font-size: 13px; color: var(--color-muted); }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--color-border); display: flex; gap: 10px; justify-content: flex-end; }
+
+    .tag-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 100px; font-size: 12px; font-weight: 500; }
+    .tag-chip button { background: none; border: none; cursor: pointer; color: var(--color-muted); line-height: 1; font-size: 14px; padding: 0 2px; }
+    .tag-chip button:hover { color: var(--color-danger); }
+
+    .profile-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--color-brand-light); color: var(--color-brand); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
+    .security-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+
+    <div class="page-header" style="padding-left:var(--space-5);padding-right:var(--space-5)">
+      <div class="page-header-left">
+        <h1 class="page-title">Roles &amp; Access Control</h1>
+        <p class="page-subtitle">6 active users · 7 system roles · Last change: 10-Aug-2026 by Marcus Lee</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-primary" id="invite-user-btn" onclick="openInviteModal()">
+          <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm40 112h-32v32a8 8 0 01-16 0v-32H88a8 8 0 010-16h32V88a8 8 0 0116 0v32h32a8 8 0 010 16z" fill="currentColor"/></svg>
+          Invite User
+        </button>
+      </div>
+    </div>
+
+    <div class="tabs-nav">
+      <div class="tab-btn active" onclick="switchTab('users', this)">Users</div>
+      <div class="tab-btn" onclick="switchTab('roles', this)">Roles &amp; Permissions</div>
+      <div class="tab-btn" onclick="switchTab('audit', this)">Access Log</div>
+      <div class="tab-btn" onclick="switchTab('settings', this)">Settings</div>
+    </div>
+
+    <!-- TAB: Users -->
+    <div id="tab-users" class="tab-pane active">
+      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4)">
+        <input type="text" class="form-control" placeholder="Search by name or email..." style="flex:1;max-width:320px" oninput="filterUsers(this.value)">
+        <select class="form-control" style="width:180px" onchange="filterUsers()"><option>Role: All</option><option>Product Manager</option><option>Pricing Actuary</option><option>Underwriting Manager</option><option>Compliance/Legal</option><option>Administrator</option><option>Publisher</option><option>Auditor</option></select>
+        <select class="form-control" style="width:160px"><option>Status: All</option><option>Active</option><option>Invited</option><option>Suspended</option></select>
+      </div>
+      <table class="data-table" id="user-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Last Active</th>
+            <th>Products Owned</th>
+            <th>MFA</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr onclick="openUserDrawer('anika')">
+            <td><div class="user-cell"><div class="avatar" style="background:#DBEAFE;color:#1A4F8A">AS</div><div><div style="font-weight:600;font-size:14px">Anika Sharma</div><div style="font-size:12px;color:var(--color-muted)">anika.sharma@insurer.com</div></div></div></td>
+            <td><span class="role-badge role-pm">Product Manager</span></td>
+            <td><span class="status-active">ACTIVE</span></td>
+            <td>Today</td>
+            <td>2</td>
+            <td><span style="color:var(--color-success);font-weight:600">✓ Enabled</span></td>
+            <td style="text-align:right" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" onclick="openUserDrawer('anika')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Reset','Password reset email sent to anika.sharma@insurer.com')">Reset Pwd</button>
+            </td>
+          </tr>
+          <tr onclick="openUserDrawer('rajan')">
+            <td><div class="user-cell"><div class="avatar" style="background:#DCFCE7;color:#15803D">RM</div><div><div style="font-weight:600;font-size:14px">Rajan Mehta</div><div style="font-size:12px;color:var(--color-muted)">rajan.mehta@insurer.com</div></div></div></td>
+            <td><span class="role-badge role-actuary">Pricing Actuary</span></td>
+            <td><span class="status-active">ACTIVE</span></td>
+            <td>Today</td>
+            <td>—</td>
+            <td><span style="color:var(--color-success);font-weight:600">✓ Enabled</span></td>
+            <td style="text-align:right" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" onclick="openUserDrawer('rajan')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Reset','Password reset email sent.')">Reset Pwd</button>
+            </td>
+          </tr>
+          <tr onclick="openUserDrawer('sunita')">
+            <td><div class="user-cell"><div class="avatar" style="background:#EDE9FE;color:#7C3AED">SP</div><div><div style="font-weight:600;font-size:14px">Sunita Pillai</div><div style="font-size:12px;color:var(--color-muted)">sunita.pillai@insurer.com</div></div></div></td>
+            <td><span class="role-badge role-uw">Underwriting Manager</span></td>
+            <td><span class="status-active">ACTIVE</span></td>
+            <td>Yesterday</td>
+            <td>—</td>
+            <td><span style="color:var(--color-success);font-weight:600">✓ Enabled</span></td>
+            <td style="text-align:right" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" onclick="openUserDrawer('sunita')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Reset','Password reset email sent.')">Reset Pwd</button>
+            </td>
+          </tr>
+          <tr onclick="openUserDrawer('david')">
+            <td><div class="user-cell"><div class="avatar" style="background:#FEF3C7;color:#B45309">DO</div><div><div style="font-weight:600;font-size:14px">David Okonkwo</div><div style="font-size:12px;color:var(--color-muted)">david.okonkwo@insurer.com</div></div></div></td>
+            <td><span class="role-badge role-comp">Compliance/Legal</span></td>
+            <td><span class="status-active">ACTIVE</span></td>
+            <td>2 days ago</td>
+            <td>—</td>
+            <td><span style="color:var(--color-success);font-weight:600">✓ Enabled</span></td>
+            <td style="text-align:right" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" onclick="openUserDrawer('david')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Reset','Password reset email sent.')">Reset Pwd</button>
+            </td>
+          </tr>
+          <tr onclick="openUserDrawer('priya')">
+            <td><div class="user-cell"><div class="avatar" style="background:#E0F2FE;color:#0369A1">PV</div><div><div style="font-weight:600;font-size:14px">Priya Varghese</div><div style="font-size:12px;color:var(--color-muted)">priya.varghese@insurer.com</div></div></div></td>
+            <td><span class="role-badge role-pub">Publisher</span></td>
+            <td><span class="status-active">ACTIVE</span></td>
+            <td>Today</td>
+            <td>—</td>
+            <td><span style="color:var(--color-success);font-weight:600">✓ Enabled</span></td>
+            <td style="text-align:right" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" onclick="openUserDrawer('priya')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Reset','Password reset email sent.')">Reset Pwd</button>
+            </td>
+          </tr>
+          <tr onclick="openUserDrawer('marcus')">
+            <td><div class="user-cell"><div class="avatar" style="background:#FEE2E2;color:#DC2626">ML</div><div><div style="font-weight:600;font-size:14px">Marcus Lee</div><div style="font-size:12px;color:var(--color-muted)">marcus.lee@insurer.com</div></div></div></td>
+            <td><span class="role-badge role-admin">Administrator</span></td>
+            <td><span class="status-active">ACTIVE</span></td>
+            <td>Today</td>
+            <td>—</td>
+            <td><span style="color:var(--color-success);font-weight:600">✓ Enabled</span></td>
+            <td style="text-align:right" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-sm" onclick="openUserDrawer('marcus')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('warning','Blocked','You cannot change your own role.')">Reset Pwd</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Roles & Permissions -->
+    <div id="tab-roles" class="tab-pane">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">
+        <div style="font-size:13px;color:var(--color-muted);display:flex;align-items:center;gap:20px">
+          <span><span class="perm-check">✓</span> Full Access</span>
+          <span><span class="perm-read">R</span> Read-only</span>
+          <span><span class="perm-limit" title="Hover * for details">*</span> Limited (hover for details)</span>
+          <span><span class="perm-none">—</span> No Access</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="PS.actionResult('info','Request Sent','Your permission change request has been submitted to the Administrator.')">Request Permission Change</button>
+      </div>
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Action / Area</th><th>PM</th><th>Actuary</th><th>UW Mgr</th><th>Compliance</th><th>Admin</th><th>Publisher</th><th>Auditor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="group-header"><td colspan="8">Product Catalogue</td></tr>
+          <tr><td>View all products</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td></tr>
+          <tr><td>Create product</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Clone product</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Retire product</td><td class="perm-limit" title="Only products they own">*</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Coverage Studio</td></tr>
+          <tr><td>View covers</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td><td class="perm-read">R</td></tr>
+          <tr><td>Edit covers (Draft)</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Questionnaire Studio</td></tr>
+          <tr><td>View questions</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td><td class="perm-read">R</td></tr>
+          <tr><td>Edit questions (Draft)</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Eligibility Studio</td></tr>
+          <tr><td>View rules</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td><td class="perm-read">R</td></tr>
+          <tr><td>Edit rules (Draft)</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Rating &amp; Pricing Studio</td></tr>
+          <tr><td>View rates &amp; formula</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td><td class="perm-read">R</td></tr>
+          <tr><td>Edit rates &amp; formula (Draft)</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Add/remove factors (Draft)</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Run premium test</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Underwriting Studio</td></tr>
+          <tr><td>View UW rules</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td><td class="perm-read">R</td></tr>
+          <tr><td>Edit UW rules (Draft)</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Set authority limits</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Distribution Studio</td></tr>
+          <tr><td>View channels</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td><td class="perm-read">R</td></tr>
+          <tr><td>Edit channels (Draft)</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Manage commission</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Document Studio</td></tr>
+          <tr><td>View documents</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-read">R</td><td class="perm-read">R</td></tr>
+          <tr><td>Link documents (Draft)</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Compliance approve document</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Simulation &amp; Testing</td></tr>
+          <tr><td>Run simulation</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Add/edit test cases</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Governance &amp; Approval</td></tr>
+          <tr><td>Submit for review</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Approve (Product Owner gate)</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Approve (Actuarial gate)</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Approve (UW gate)</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Approve (Compliance gate)</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Approve (Ops/Tech gate)</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Schedule publication</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td></tr>
+          <tr><td>Publish</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td></tr>
+
+          <tr class="group-header"><td colspan="8">Audit Log</td></tr>
+          <tr><td>View audit log</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-check">✓</td></tr>
+          <tr><td>Export audit log</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-check">✓</td></tr>
+
+          <tr class="group-header"><td colspan="8">Platform Administration</td></tr>
+          <tr><td>Manage users</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Manage roles</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>Platform configuration</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td></tr>
+          <tr><td>View integration monitor</td><td class="perm-check">✓</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-none">—</td><td class="perm-check">✓</td><td class="perm-check">✓</td><td class="perm-none">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Access Log -->
+    <div id="tab-audit" class="tab-pane">
+      <table class="data-table">
+        <thead>
+          <tr><th>Timestamp</th><th>User</th><th>Action</th><th>Detail</th><th>IP</th><th>Outcome</th></tr>
+        </thead>
+        <tbody>
+          <tr><td style="font-family:'IBM Plex Mono',monospace">10-Aug-2026 15:20:11</td><td>Marcus Lee</td><td><span class="status-badge" style="background:#FEF9C3;color:var(--color-warning)">PERMISSION CHANGE</span></td><td>Added Priya Varghese as Publisher</td><td style="color:var(--color-muted);font-family:monospace">192.168.x.x</td><td><span style="color:var(--color-success);font-weight:600">Success</span></td></tr>
+          <tr><td style="font-family:'IBM Plex Mono',monospace">10-Aug-2026 15:19:44</td><td>Marcus Lee</td><td><span class="status-badge" style="background:var(--color-surface);border:1px solid var(--color-border)">USER INVITED</span></td><td>Invited priya.varghese@insurer.com</td><td style="color:var(--color-muted);font-family:monospace">192.168.x.x</td><td><span style="color:var(--color-success);font-weight:600">Success</span></td></tr>
+          <tr><td style="font-family:'IBM Plex Mono',monospace">05-Aug-2026 11:03:22</td><td>Anika Sharma</td><td><span class="status-badge" style="background:#FEE2E2;color:var(--color-danger)">ACCESS DENIED</span></td><td>Attempted to access Rating Studio rate edit (insufficient role)</td><td style="color:var(--color-muted);font-family:monospace">10.0.x.x</td><td><span style="color:var(--color-danger);font-weight:600">Denied</span></td></tr>
+          <tr><td style="font-family:'IBM Plex Mono',monospace">01-Aug-2026 09:00:05</td><td>Marcus Lee</td><td><span class="status-badge" style="background:#FEF9C3;color:var(--color-warning)">ROLE CHANGED</span></td><td>Rajan Mehta: Analyst → Pricing Actuary</td><td style="color:var(--color-muted);font-family:monospace">192.168.x.x</td><td><span style="color:var(--color-success);font-weight:600">Success</span></td></tr>
+          <tr><td style="font-family:'IBM Plex Mono',monospace">25-Jul-2026 14:55:01</td><td>Marcus Lee</td><td><span class="status-badge" style="background:#DCFCE7;color:var(--color-success)">USER CREATED</span></td><td>Created user David Okonkwo (Compliance/Legal)</td><td style="color:var(--color-muted);font-family:monospace">192.168.x.x</td><td><span style="color:var(--color-success);font-weight:600">Success</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Settings -->
+    <div id="tab-settings" class="tab-pane">
+      <div class="settings-section">
+        <h3 class="settings-title">Governance Configuration</h3>
+        <div class="settings-row">
+          <div><div class="settings-label">Required Approval Gates</div></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <span class="tag-chip">Product Owner <button onclick="PS.actionResult('warning','Cannot Remove','At least 1 gate is required.')">×</button></span>
+            <span class="tag-chip">Actuarial <button onclick="PS.actionResult('warning','Cannot Remove','At least 1 gate is required.')">×</button></span>
+            <span class="tag-chip">Underwriting <button onclick="PS.actionResult('warning','Cannot Remove','At least 1 gate is required.')">×</button></span>
+            <span class="tag-chip">Compliance <button onclick="PS.actionResult('warning','Cannot Remove','At least 1 gate is required.')">×</button></span>
+            <span class="tag-chip">Ops/Tech <button onclick="PS.actionResult('warning','Cannot Remove','At least 1 gate is required.')">×</button></span>
+            <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Add Gate','Custom governance gate configuration coming soon.')">+ Add Gate</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Gate Order</div><div class="settings-hint">Controls whether gates must be completed in sequence or in parallel</div></div>
+          <select class="form-control" style="width:220px"><option>Sequential (in listed order)</option><option>Parallel (all simultaneously)</option></select>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Allow Self-Approval</div><div class="settings-hint">Can the submitter approve their own gate?</div></div>
+          <div><label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer"><input type="checkbox"> Allow submitter to approve their own gate (not recommended)</label></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Auto-Approve Timeout</div><div class="settings-hint">Automatically approve if reviewer doesn't act within this period</div></div>
+          <div style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="auto-approve-toggle" onchange="document.getElementById('auto-approve-days').style.display=this.checked?'flex':'none'"><label style="font-size:13px">Enable timeout</label><div id="auto-approve-days" style="display:none;align-items:center;gap:8px"><input type="number" class="form-control" value="3" style="width:70px"> days</div></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-title">Simulation Requirements</h3>
+        <div class="settings-row">
+          <div><div class="settings-label">Simulation Required Before Submission?</div></div>
+          <select class="form-control" style="width:220px"><option>Yes (enforced)</option><option>No (optional)</option></select>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Minimum Test Cases Required</div></div>
+          <input type="number" class="form-control" value="3" style="width:100px">
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Premium Variance Tolerance</div><div class="settings-hint">Compared to previous published version</div></div>
+          <div style="display:flex;align-items:center;gap:12px"><input type="text" class="form-control" value="10%" style="width:80px"> <span style="font-size:13px;color:var(--color-warning)">⚠ Warning</span> <input type="text" class="form-control" value="20%" style="width:80px"> <span style="font-size:13px;color:var(--color-danger)">✕ Block</span></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-title">Session &amp; Security</h3>
+        <div class="settings-row">
+          <div><div class="settings-label">Session Timeout (inactivity)</div></div>
+          <div style="display:flex;align-items:center;gap:8px"><input type="number" class="form-control" value="60" style="width:80px"> minutes</div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">MFA Required</div></div>
+          <select class="form-control" style="width:220px"><option>Yes — All Users</option><option>Optional</option><option>No</option></select>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Password Policy</div></div>
+          <div style="font-size:13px;color:var(--color-muted)">Min 12 chars · Upper + lower + numeric + special · 90-day rotation</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-title">Notification Defaults</h3>
+        <table class="data-table">
+          <thead><tr><th>Event</th><th>Default Recipients</th></tr></thead>
+          <tbody>
+            <tr><td>Product submitted for review</td><td style="color:var(--color-muted)">Gate reviewers (all pending gates)</td></tr>
+            <tr><td>Gate approved</td><td style="color:var(--color-muted)">Product Owner, next gate reviewer</td></tr>
+            <tr><td>All gates approved</td><td style="color:var(--color-muted)">Publisher</td></tr>
+            <tr><td>Publication succeeded</td><td style="color:var(--color-muted)">Product Owner, all gate reviewers</td></tr>
+            <tr><td>Simulation failure</td><td style="color:var(--color-muted)">Product Owner, Actuary</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:var(--space-5)">
+        <button class="btn btn-primary" onclick="PS.actionResult('success','Saved','Platform settings updated successfully.')">Save Settings</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     INVITE USER MODAL
+═══════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="invite-modal" onclick="closeInviteModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Invite New User</div>
+      <div class="modal-desc">The user will receive an email with a one-time setup link valid for 48 hours. They will appear with status <strong>INVITED</strong> until they complete setup.</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Email Address <span style="color:var(--color-danger)">*</span></label>
+        <input type="email" class="form-control" id="invite-email" placeholder="firstname.lastname@insurer.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name <span style="color:var(--color-danger)">*</span></label>
+        <input type="text" class="form-control" id="invite-name" placeholder="e.g. Ramesh Iyer">
+      </div>
+      <div class="form-group">
+        <label class="form-label">System Role <span style="color:var(--color-danger)">*</span></label>
+        <select class="form-control" id="invite-role">
+          <option value="">Select a role…</option>
+          <option>Product Manager</option>
+          <option>Pricing Actuary</option>
+          <option>Underwriting Manager</option>
+          <option>Compliance/Legal</option>
+          <option>Administrator</option>
+          <option>Publisher</option>
+          <option>Auditor</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Product Family Restriction <span style="color:var(--color-muted)">(optional)</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${PS.data.productFamilies.map(family => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="${family}"> ${family}</label>`).join('')}
+        </div>
+        <div style="font-size:11px;color:var(--color-muted);margin-top:6px">Leave all unchecked for unrestricted access to all product families.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Welcome Message</label>
+        <textarea class="form-control" rows="3" style="resize:vertical">Welcome to the Insurance Product Studio! Your account has been created. Please complete your setup using the link below. Contact your Administrator if you need any assistance.</textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeInviteModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="sendInvitation()">
+        <svg width="14" height="14" viewBox="0 0 256 256" fill="none"><path d="M224 128a96 96 0 11-96-96 96 96 0 0196 96zM104 80v96l72-48z" fill="currentColor"/></svg>
+        Send Invitation
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     USER DETAIL DRAWER
+═══════════════════════════════════════════════════════════════════ -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="user-drawer">
+  <div class="drawer-header">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="profile-avatar" id="drawer-avatar">AS</div>
+      <div>
+        <div style="font-size:20px;font-weight:700" id="drawer-name">Anika Sharma</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <span class="role-badge role-pm" id="drawer-role-badge">Product Manager</span>
+          <span class="status-active" id="drawer-status">ACTIVE</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-icon" onclick="closeDrawer()" style="align-self:flex-start;font-size:20px">×</button>
+  </div>
+
+  <div class="drawer-body">
+    <!-- Identity -->
+    <div>
+      <div class="drawer-section-title">Identity</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-control" id="drawer-fullname" value="Anika Sharma"></div>
+        <div class="form-group"><label class="form-label">Email Address</label><input type="email" class="form-control" id="drawer-email" value="anika.sharma@insurer.com"></div>
+        <div class="form-group"><label class="form-label">Phone (optional)</label><input type="text" class="form-control" id="drawer-phone" value="+91 98100 00001"></div>
+        <div class="form-group"><label class="form-label">Job Title</label><input type="text" class="form-control" id="drawer-jobtitle" value="Senior Product Manager"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Department / Team</label><input type="text" class="form-control" id="drawer-dept" value="Product Innovation"></div>
+      </div>
+    </div>
+
+    <!-- Role Assignment -->
+    <div>
+      <div class="drawer-section-title">Role Assignment</div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">Current System Role</label>
+        <select class="form-control" style="max-width:280px" id="drawer-role-select">
+          <option>Product Manager</option><option>Pricing Actuary</option><option>Underwriting Manager</option><option>Compliance/Legal</option><option>Administrator</option><option>Publisher</option><option>Auditor</option>
+        </select>
+      </div>
+      <div style="font-size:11px;color:var(--color-muted);margin-bottom:12px">A user may only hold one role. Changing role requires re-authentication.</div>
+      <button class="btn btn-secondary btn-sm" onclick="PS.actionResult('warning','Confirm Required','Role change requires re-authentication and will invalidate the current session.')">Change Role</button>
+    </div>
+
+    <!-- Product Assignment -->
+    <div id="drawer-products-section">
+      <div class="drawer-section-title">Product Assignment <span style="font-weight:400;color:var(--color-muted)">(Product Managers only)</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="drawer-products">
+        <span class="tag-chip">PRD-001 Private Car Comprehensive <button onclick="PS.actionResult('info','Removed','Product assignment removed.')">×</button></span>
+        <span class="tag-chip">PRD-002 Motorcycle Comprehensive <button onclick="PS.actionResult('info','Removed','Product assignment removed.')">×</button></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Assign','Product assignment picker coming soon.')">+ Assign Product</button>
+    </div>
+
+    <!-- Access Scope Restrictions -->
+    <div>
+      <div class="drawer-section-title">Access Scope Restrictions <span style="font-weight:400;color:var(--color-muted)">(Admin only)</span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <input type="checkbox" id="restrict-family-toggle" onchange="document.getElementById('restrict-family').style.display=this.checked?'flex':'none'">
+        <label for="restrict-family-toggle" style="font-size:13px">Restrict to specific product families</label>
+      </div>
+      <div id="restrict-family" style="display:none;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" checked> Motor</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Trucking</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Cyber</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Health</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Property</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Workers Compensation</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Marine</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Travel</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Life</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> Liability</label>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="restrict-jx-toggle">
+        <label for="restrict-jx-toggle" style="font-size:13px">Restrict to specific jurisdictions</label>
+      </div>
+    </div>
+
+    <!-- Security -->
+    <div>
+      <div class="drawer-section-title" style="color:var(--color-danger)">Security</div>
+      <div class="security-row">
+        <div><div style="font-size:13px;font-weight:600">MFA Status</div><div style="font-size:12px;color:var(--color-success);margin-top:2px">✓ Enabled via Authenticator App</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="PS.actionResult('warning','Reset MFA','MFA has been reset. User must re-enroll on next login.')">Reset MFA</button>
+      </div>
+      <div class="security-row">
+        <div><div style="font-size:13px;font-weight:600">Last Login</div><div style="font-size:12px;color:var(--color-muted);margin-top:2px">Today 09:24 AM IST · 192.168.x.x</div></div>
+      </div>
+      <div class="security-row">
+        <div><div style="font-size:13px;font-weight:600">Active Sessions</div><div style="font-size:12px;color:var(--color-muted);margin-top:2px">2 active sessions</div></div>
+        <button class="btn btn-secondary btn-sm" style="color:var(--color-danger)" onclick="PS.actionResult('warning','Sessions Revoked','All active sessions have been terminated. User will need to log in again.')">Revoke All</button>
+      </div>
+      <div class="security-row">
+        <div><div style="font-size:13px;font-weight:600">Password Reset</div><div style="font-size:12px;color:var(--color-muted);margin-top:2px">Send a password reset link via email</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="PS.actionResult('success','Email Sent','Password reset email sent to the user.')">Send Reset Email</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-footer">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" style="color:var(--color-danger);border-color:var(--color-danger)" onclick="suspendUser()">Suspend User</button>
+      <button class="btn btn-secondary" style="color:var(--color-danger);border-color:var(--color-danger)" onclick="deleteUser()">Delete User</button>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-secondary" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Suspend Confirmation Modal -->
+<div class="modal-overlay" id="suspend-modal" onclick="closeSuspendModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="width:440px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--color-danger)">Suspend User</div>
+      <div class="modal-desc">Suspending this user will immediately revoke all active sessions and prevent login. They will remain in the system and can be reactivated.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSuspendModal()">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--color-danger);border-color:var(--color-danger)" onclick="confirmSuspend()">Suspend User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal" onclick="closeDeleteModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="width:460px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--color-danger)">Delete User</div>
+      <div class="modal-desc">This action is irreversible. Type the user's email address to confirm deletion.</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Confirm Email Address</label>
+        <input type="email" class="form-control" id="delete-confirm-email" placeholder="Enter email to confirm…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--color-danger);border-color:var(--color-danger)" onclick="confirmDelete()">Permanently Delete User</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('roles', [{ label: 'Roles & Access Control', href: '#' }]);
+});
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tab-${id}`).classList.add('active');
+}
+
+// ── User data ───────────────────────────────────────────────────────────────
+const USERS = {
+  anika: { name:'Anika Sharma', email:'anika.sharma@insurer.com', phone:'+91 98100 00001', title:'Senior Product Manager', dept:'Product Innovation', role:'Product Manager', roleClass:'role-pm', status:'ACTIVE', statusClass:'status-active', initials:'AS', avatarBg:'#DBEAFE', avatarColor:'#1A4F8A', products:['PRD-001 Private Car Comprehensive','PRD-002 Motorcycle Comprehensive'] },
+  rajan: { name:'Rajan Mehta', email:'rajan.mehta@insurer.com', phone:'+91 98200 00002', title:'Chief Actuary', dept:'Actuarial', role:'Pricing Actuary', roleClass:'role-actuary', status:'ACTIVE', statusClass:'status-active', initials:'RM', avatarBg:'#DCFCE7', avatarColor:'#15803D', products:[] },
+  sunita: { name:'Sunita Pillai', email:'sunita.pillai@insurer.com', phone:'+91 98300 00003', title:'Head of Underwriting', dept:'Underwriting', role:'Underwriting Manager', roleClass:'role-uw', status:'ACTIVE', statusClass:'status-active', initials:'SP', avatarBg:'#EDE9FE', avatarColor:'#7C3AED', products:[] },
+  david: { name:'David Okonkwo', email:'david.okonkwo@insurer.com', phone:'+91 98400 00004', title:'Compliance Officer', dept:'Legal & Compliance', role:'Compliance/Legal', roleClass:'role-comp', status:'ACTIVE', statusClass:'status-active', initials:'DO', avatarBg:'#FEF3C7', avatarColor:'#B45309', products:[] },
+  priya: { name:'Priya Varghese', email:'priya.varghese@insurer.com', phone:'+91 98500 00005', title:'Release Manager', dept:'Technology', role:'Publisher', roleClass:'role-pub', status:'ACTIVE', statusClass:'status-active', initials:'PV', avatarBg:'#E0F2FE', avatarColor:'#0369A1', products:[] },
+  marcus: { name:'Marcus Lee', email:'marcus.lee@insurer.com', phone:'+91 98600 00006', title:'Platform Administrator', dept:'IT Administration', role:'Administrator', roleClass:'role-admin', status:'ACTIVE', statusClass:'status-active', initials:'ML', avatarBg:'#FEE2E2', avatarColor:'#DC2626', products:[] },
+};
+
+let currentUser = null;
+
+function openUserDrawer(userId) {
+  const u = USERS[userId];
+  currentUser = userId;
+  const drawer = document.getElementById('user-drawer');
+  document.getElementById('drawer-avatar').textContent = u.initials;
+  document.getElementById('drawer-avatar').style.background = u.avatarBg;
+  document.getElementById('drawer-avatar').style.color = u.avatarColor;
+  document.getElementById('drawer-name').textContent = u.name;
+  document.getElementById('drawer-role-badge').textContent = u.role;
+  document.getElementById('drawer-role-badge').className = `role-badge ${u.roleClass}`;
+  document.getElementById('drawer-status').textContent = u.status;
+  document.getElementById('drawer-status').className = u.statusClass;
+  document.getElementById('drawer-fullname').value = u.name;
+  document.getElementById('drawer-email').value = u.email;
+  document.getElementById('drawer-phone').value = u.phone;
+  document.getElementById('drawer-jobtitle').value = u.title;
+  document.getElementById('drawer-dept').value = u.dept;
+  document.getElementById('drawer-role-select').value = u.role;
+
+  // Products section
+  const prodSection = document.getElementById('drawer-products-section');
+  const prodList = document.getElementById('drawer-products');
+  if (u.products.length > 0) {
+    prodSection.style.display = '';
+    prodList.innerHTML = u.products.map(p => `<span class="tag-chip">${p} <button onclick="PS.actionResult('info','Removed','Product assignment removed.')">×</button></span>`).join('');
+  } else {
+    prodSection.style.display = 'none';
+  }
+
+  drawer.classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('user-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+function saveUser() {
+  closeDrawer();
+  PS.actionResult('success', 'Saved', 'User profile updated successfully.');
+}
+
+function suspendUser() {
+  document.getElementById('suspend-modal').classList.add('open');
+}
+function closeSuspendModal(e) {
+  if (!e || e.target === document.getElementById('suspend-modal')) {
+    document.getElementById('suspend-modal').classList.remove('open');
+  }
+}
+function confirmSuspend() {
+  document.getElementById('suspend-modal').classList.remove('open');
+  closeDrawer();
+  PS.actionResult('warning', 'User Suspended', `${USERS[currentUser]?.name || 'User'} has been suspended.`);
+}
+
+function deleteUser() {
+  document.getElementById('delete-modal').classList.add('open');
+  document.getElementById('delete-confirm-email').value = '';
+}
+function closeDeleteModal(e) {
+  if (!e || e.target === document.getElementById('delete-modal')) {
+    document.getElementById('delete-modal').classList.remove('open');
+  }
+}
+function confirmDelete() {
+  const typed = document.getElementById('delete-confirm-email').value.trim();
+  const expected = USERS[currentUser]?.email || '';
+  if (typed !== expected) {
+    PS.actionResult('danger', 'Email Mismatch', 'The email address you typed does not match. Please try again.');
+    return;
+  }
+  document.getElementById('delete-modal').classList.remove('open');
+  closeDrawer();
+  PS.actionResult('success', 'Deleted', `${USERS[currentUser]?.name || 'User'} has been permanently deleted.`);
+}
+
+// ── Invite Modal ────────────────────────────────────────────────────────────
+function openInviteModal() {
+  document.getElementById('invite-modal').classList.add('open');
+  document.getElementById('invite-email').value = '';
+  document.getElementById('invite-name').value = '';
+  document.getElementById('invite-role').value = '';
+}
+function closeInviteModal(e) {
+  if (!e || e.target === document.getElementById('invite-modal')) {
+    document.getElementById('invite-modal').classList.remove('open');
+  }
+}
+function sendInvitation() {
+  const email = document.getElementById('invite-email').value.trim();
+  const name = document.getElementById('invite-name').value.trim();
+  const role = document.getElementById('invite-role').value;
+  if (!email || !name || !role) {
+    PS.actionResult('danger', 'Missing Fields', 'Please fill in Email, Full Name, and Role before sending.');
+    return;
+  }
+  document.getElementById('invite-modal').classList.remove('open');
+  PS.actionResult('success', 'Invitation Sent', `Invitation sent to ${email}. They will appear as INVITED in the user table.`);
+}
+
+function filterUsers(query) {
+  // Simple search filter
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

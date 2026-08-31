@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coverage Studio — Product Studio | VeriDex</title>
+  <meta name="description" content="Configure covers, limits, deductibles, exclusions and financial terms for a product version.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Studio two-panel shell ────────────────────────── */
+    .studio-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: var(--space-5);
+      align-items: start;
+    }
+
+    /* ── Cover sidebar ─────────────────────────────────── */
+    .cover-sidebar { position: sticky; top: calc(56px + var(--space-6)); }
+    .cover-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); }
+    .cover-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: 10px var(--space-4);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .1s, border-color .1s;
+    }
+    .cover-item:hover { background: var(--color-surface); }
+    .cover-item.active {
+      background: var(--color-brand-light);
+      border-left-color: var(--color-brand);
+    }
+    .cover-item-left { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; }
+    .cover-item-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cover-item.active .cover-item-name { color: var(--color-brand); }
+    .cover-warn { color: var(--color-warning); font-size: 13px; }
+
+    /* Availability micro-badges */
+    .avail-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 18px;
+      padding: 0 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .avail-mandatory  { background: #EBF1FA; color: var(--color-brand); }
+    .avail-optional   { background: #F1F5F9; color: var(--color-muted); }
+    .avail-default    { background: #DCFCE7; color: var(--color-success); }
+    .avail-addon      { background: #F3E8FF; color: #7C3AED; }
+
+    /* ── Detail panel ──────────────────────────────────── */
+    .detail-panel { display: flex; flex-direction: column; gap: var(--space-4); }
+
+    /* ── Section accordion ─────────────────────────────── */
+    .section-card {
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-4) var(--space-5);
+      cursor: pointer;
+      user-select: none;
+      transition: background .1s;
+    }
+    .section-header:hover { background: var(--color-surface); }
+    .section-header-left { display: flex; align-items: center; gap: var(--space-3); }
+    .section-number {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--color-brand-light);
+      color: var(--color-brand);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-title { font-size: 14px; font-weight: 600; }
+    .section-subtitle { font-size: 12px; color: var(--color-muted); margin-top: 1px; }
+    .section-chevron {
+      color: var(--color-muted);
+      transition: transform .2s;
+    }
+    .section-chevron.open { transform: rotate(90deg); }
+    .section-body {
+      border-top: 1px solid var(--color-border);
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .25s ease;
+    }
+    .section-body.open { max-height: 8000px; }
+    .section-inner { padding: var(--space-5) var(--space-6); }
+    .section-footer {
+      padding: var(--space-3) var(--space-6);
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-3);
+      background: var(--color-surface);
+    }
+
+    /* ── Form layout helpers ───────────────────────────── */
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-6); }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4) var(--space-5); }
+    .span-2 { grid-column: 1 / -1; }
+
+    /* ── Radio group ───────────────────────────────────── */
+    .radio-group { display: flex; flex-direction: column; gap: var(--space-2); }
+    .radio-option {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color .1s, background .1s;
+      font-size: 13px;
+    }
+    .radio-option:hover { border-color: var(--color-brand); background: var(--color-brand-light); }
+    .radio-option.selected { border-color: var(--color-brand); background: var(--color-brand-light); }
+    .radio-option input[type="radio"] { accent-color: var(--color-brand); }
+
+    /* ── Currency input ─────────────────────────────────── */
+    .currency-wrap { position: relative; }
+    .currency-prefix {
+      position: absolute; left: 10px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px; font-weight: 600; color: var(--color-muted);
+      pointer-events: none;
+    }
+    .currency-input { padding-left: 36px; font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── Toggle switch ──────────────────────────────────── */
+    .toggle-wrap {
+      display: flex; align-items: center; gap: var(--space-3);
+      font-size: 13px;
+    }
+    .toggle-switch {
+      position: relative; width: 40px; height: 22px; display: inline-block;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--color-disabled);
+      border-radius: 11px; cursor: pointer; transition: .2s;
+    }
+    .toggle-dot {
+      position: absolute; left: 2px; top: 2px;
+      width: 18px; height: 18px;
+      background: #fff; border-radius: 50%; transition: .2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--color-brand); }
+    .toggle-switch input:checked ~ .toggle-dot,
+    .toggle-switch input:checked + .toggle-slider + .toggle-dot { transform: translateX(18px); }
+
+    /* ── Dependency / constraint table ─────────────────── */
+    .dep-table { width: 100%; border-collapse: collapse; margin-bottom: var(--space-3); }
+    .dep-table th {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--color-muted);
+      padding: var(--space-2) var(--space-3); text-align: left;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .dep-table td {
+      padding: var(--space-2) var(--space-3);
+      font-size: 13px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .dep-table tr:last-child td { border-bottom: none; }
+    .dep-table select, .dep-table input { height: 30px; font-size: 13px; }
+
+    /* ── Wording doc row ────────────────────────────────── */
+    .doc-row {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-2);
+      background: var(--color-surface);
+    }
+    .doc-row-icon { color: var(--color-brand); flex-shrink: 0; }
+    .doc-row-name { font-size: 13px; font-weight: 500; flex: 1; }
+    .doc-row-code { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--color-muted); }
+    .doc-row-ver  { font-size: 12px; color: var(--color-muted); }
+
+    /* ── Read-only banner ────────────────────────────────── */
+    .readonly-band {
+      background: var(--color-brand-light);
+      border: 1px solid rgba(26,79,138,.2);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-5);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; color: var(--color-brand);
+      margin-bottom: var(--space-5);
+    }
+
+    /* ── Library table ───────────────────────────────────── */
+    .lib-table { width: 100%; border-collapse: collapse; }
+    .lib-table th {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+      color: var(--color-muted); padding: var(--space-2) var(--space-4); text-align: left;
+      border-bottom: 1px solid var(--color-border); background: var(--color-surface);
+    }
+    .lib-table td { padding: var(--space-3) var(--space-4); font-size: 13px; border-bottom: 1px solid var(--color-border); }
+    .lib-table tr:last-child td { border-bottom: none; }
+    .lib-table tr:hover td { background: var(--color-surface); }
+
+    /* ── Constraint badge operator ───────────────────────── */
+    .op-badge {
+      display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm); font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px; color: var(--color-brand); font-weight: 600;
+    }
+
+    /* ── Studio context bar ──────────────────────────────── */
+    .studio-context-bar {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-5);
+      font-size: 13px;
+    }
+    .studio-context-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px;
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+    }
+
+    /* ── Modular insured item terms ─────────────────────── */
+    .item-term-card {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      padding: var(--space-5);
+      margin-bottom: var(--space-4);
+    }
+    .item-term-header { display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-4); }
+    .item-term-title { font-size:14px;font-weight:600; }
+    .choice-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-2); }
+    .choice-chip {
+      display:flex;align-items:center;gap:var(--space-2);padding:9px var(--space-3);
+      border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-panel);
+      font-size:12px;cursor:pointer;
+    }
+    .choice-chip:has(input:checked){border-color:var(--color-brand);background:var(--color-brand-light);color:var(--color-brand);font-weight:600;}
+    .term-flow { display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--color-muted); }
+    .term-flow-step { padding:4px 8px;border-radius:100px;background:var(--color-brand-light);color:var(--color-brand);font-weight:600; }
+    .authority-grid { display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3); }
+    .authority-row { display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);padding:var(--space-4);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface); }
+    .authority-label { font-size:13px;font-weight:600; }
+    .authority-help { font-size:12px;color:var(--color-muted);margin-top:2px; }
+    @media(max-width:1100px){.choice-grid,.authority-grid{grid-template-columns:1fr 1fr!important}}
+  </style>
+</head>
+<body class="studio-page">
+<div class="shell" id="app-shell">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+
+  <!-- Sidenav -->
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+
+  <!-- Main -->
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title" id="studio-title">Coverage Studio</h1>
+          <p class="page-subtitle" id="studio-subtitle">Loading…</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="openLibraryModal()" id="import-lib-btn">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M216 40H40a16 16 0 00-16 16v144a16 16 0 0016 16h176a16 16 0 0016-16V56a16 16 0 00-16-16zm-96 136H72a8 8 0 010-16h48a8 8 0 010 16zm0-32H72a8 8 0 010-16h48a8 8 0 010 16zm0-32H72a8 8 0 010-16h48a8 8 0 010 16zm88 64h-48V80h48z" fill="currentColor"/></svg>
+            Cover Library
+          </button>
+          <button class="btn btn-secondary" onclick="openReorderModal()" id="reorder-btn">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8H40a8 8 0 010-16h176a8 8 0 018 8zm-8-72H40a8 8 0 000 16h176a8 8 0 000-16zm0 128H40a8 8 0 000 16h176a8 8 0 000-16z" fill="currentColor"/></svg>
+            Reorder Covers
+          </button>
+          <button class="btn btn-primary" onclick="openAddCoverModal()" id="add-cover-btn">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+            Add Cover
+          </button>
+        </div>
+      </div>
+
+      <!-- Context bar -->
+      <div class="studio-context-bar" id="context-bar">
+        <span id="ctx-count"></span>
+        <div style="margin-left:auto;display:flex;gap:var(--space-3)">
+          <a id="ctx-back-link" href="product-detail.html?id=PRD-001#studios" class="btn btn-ghost btn-sm">← Back to Product</a>
+        </div>
+      </div>
+
+      <!-- Published read-only notice -->
+      <div class="readonly-band" id="readonly-band">
+        <span>📌 This version is <strong>Published</strong> — all fields are read-only.</span>
+        <button class="btn btn-primary btn-sm" onclick="PS.actionResult('info','Clone to edit','Clone this version from the Product Detail page to make changes.')">Clone Version to Edit</button>
+      </div>
+
+      <!-- Two-panel layout -->
+      <div class="studio-layout">
+
+        <!-- LEFT: Cover sidebar -->
+        <div class="cover-sidebar">
+          <div class="card">
+            <div class="card-header" style="padding:var(--space-4) var(--space-5)">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted)">Covers</div>
+              <button class="btn btn-ghost btn-sm" onclick="openAddCoverModal()">+ Add</button>
+            </div>
+            <div class="cover-list" id="cover-list"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Cover detail panel -->
+        <div class="detail-panel" id="detail-panel">
+          <!-- Rendered by JS -->
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="responsive-warning" role="status">Insurance Product Studio is optimized for desktop screens (1280px and wider).</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+/* ────────────────────────────────────────────────────────
+   DATA
+──────────────────────────────────────────────────────── */
+const COVERS = [
+  {
+    id: 'COV-001', name: 'Own Damage', code: 'COV-OD-001',
+    availability: 'mandatory', complete: true,
+    type: 'First Party — Property Damage',
+    description: 'Covers physical loss or damage to the insured vehicle caused by an accident, fire, theft, or natural disaster.',
+    basisOfCoverage: 'Agreed Value',
+    sumInsured: '50,000', maxSingleLimit: '50,000', subLimit: '',
+    deductibleType: 'fixed', deductibleAmount: '300',
+    deductiblePct: '', minDeductible: '200', maxDeductible: '2,000',
+    copay: '0', waitingPeriod: 'None', annualAggregate: false,
+    defaultSelected: true,
+    mutualExclusions: [],
+    conditionalOn: '',
+    dependencies: [
+      { type: 'Bundles with', dependsOn: 'Roadside Assistance', condition: 'Vehicle age < 5 years' }
+    ],
+    constraints: [
+      { field: 'Vehicle Age', operator: '≤', value: '15 years' },
+      { field: 'Vehicle Type', operator: 'is one of', value: 'Private Car, SUV' },
+      { field: 'Insured Value', operator: '≥', value: '$5,000' }
+    ],
+    lossBasis: 'Per Occurrence', reinstatement: 'Automatic (full limit)',
+    benefitBasis: 'Indemnity', claimsNotifPeriod: '14', claimsNotifUnit: 'days',
+    wordingDocs: [
+      { name: 'Own Damage Clause — Standard', version: 'v2026.04', code: 'DOC-OD-CL-001' },
+      { name: 'General Exclusions Endorsement', version: 'v2026.01', code: 'DOC-GEN-EX-001' }
+    ]
+  },
+  {
+    id: 'COV-002', name: 'Third Party Liability', code: 'COV-TP-001',
+    availability: 'mandatory', complete: true,
+    type: 'Third Party Liability',
+    description: 'Covers legal liability of the insured to third parties for bodily injury or property damage arising from vehicle use.',
+    basisOfCoverage: 'Market Value',
+    sumInsured: '100,000', maxSingleLimit: '100,000', subLimit: '300,000',
+    deductibleType: 'none', deductibleAmount: '',
+    deductiblePct: '', minDeductible: '', maxDeductible: '',
+    copay: '0', waitingPeriod: 'None', annualAggregate: false,
+    defaultSelected: true,
+    mutualExclusions: [],
+    conditionalOn: '',
+    dependencies: [
+      { type: 'Requires', dependsOn: 'Own Damage', condition: 'For this product — see PRD-002 for standalone TP' }
+    ],
+    constraints: [
+      { field: 'Vehicle Registration', operator: 'is', value: 'Active' }
+    ],
+    lossBasis: 'Per Occurrence', reinstatement: 'None (aggregate)',
+    benefitBasis: 'Indemnity', claimsNotifPeriod: '7', claimsNotifUnit: 'days',
+    wordingDocs: [
+      { name: 'Third Party Liability Clause', version: 'v2026.04', code: 'DOC-TP-CL-001' }
+    ]
+  },
+  {
+    id: 'COV-003', name: 'Personal Accident', code: 'COV-PA-001',
+    availability: 'mandatory', complete: true,
+    type: 'Benefit — Personal Accident',
+    description: 'Pays a fixed benefit to the insured driver and occupants in case of accidental death or permanent disability resulting from a road accident.',
+    basisOfCoverage: 'Agreed Value',
+    sumInsured: '25,000', maxSingleLimit: '25,000', subLimit: '',
+    deductibleType: 'none', deductibleAmount: '',
+    deductiblePct: '', minDeductible: '', maxDeductible: '',
+    copay: '0', waitingPeriod: 'None', annualAggregate: false,
+    defaultSelected: true,
+    mutualExclusions: [],
+    conditionalOn: '',
+    dependencies: [],
+    constraints: [
+      { field: 'Named Driver Age', operator: '≥', value: '18 years' },
+      { field: 'Named Driver Age', operator: '≤', value: '70 years' }
+    ],
+    lossBasis: 'Per Person', reinstatement: 'Automatic',
+    benefitBasis: 'Fixed Benefit', claimsNotifPeriod: '30', claimsNotifUnit: 'days',
+    wordingDocs: [
+      { name: 'Personal Accident Schedule', version: 'v2026.04', code: 'DOC-PA-SCH-001' }
+    ]
+  },
+  {
+    id: 'COV-004', name: 'Theft & Total Loss', code: 'COV-TH-001',
+    availability: 'default', complete: true,
+    type: 'First Party — Property Damage',
+    description: 'Covers total loss or theft of the insured vehicle. Triggered when repair costs exceed 75% of the vehicle\'s agreed value.',
+    basisOfCoverage: 'Agreed Value',
+    sumInsured: '50,000', maxSingleLimit: '50,000', subLimit: '',
+    deductibleType: 'percentage', deductibleAmount: '',
+    deductiblePct: '10', minDeductible: '500', maxDeductible: '5,000',
+    copay: '0', waitingPeriod: '30 days', annualAggregate: false,
+    defaultSelected: true,
+    mutualExclusions: [],
+    conditionalOn: 'Own Damage',
+    dependencies: [
+      { type: 'Requires', dependsOn: 'Own Damage', condition: 'Always' }
+    ],
+    constraints: [
+      { field: 'Vehicle Age', operator: '≤', value: '12 years' }
+    ],
+    lossBasis: 'Per Occurrence', reinstatement: 'None — total loss',
+    benefitBasis: 'Indemnity', claimsNotifPeriod: '14', claimsNotifUnit: 'days',
+    wordingDocs: [
+      { name: 'Theft & Total Loss Clause', version: 'v2026.04', code: 'DOC-TH-CL-001' }
+    ]
+  },
+  {
+    id: 'COV-005', name: 'Roadside Assistance', code: 'COV-RSA-001',
+    availability: 'addon', complete: true,
+    type: 'Service Benefit',
+    description: 'Provides up to 3 roadside assistance call-outs per year, with towing up to 50km. Fixed-fee add-on linked to Rating Studio as flat premium.',
+    basisOfCoverage: 'Agreed Value',
+    sumInsured: '', maxSingleLimit: 'N/A (Service)', subLimit: '',
+    deductibleType: 'none', deductibleAmount: '',
+    deductiblePct: '', minDeductible: '', maxDeductible: '',
+    copay: '0', waitingPeriod: 'None', annualAggregate: false,
+    defaultSelected: false,
+    mutualExclusions: [],
+    conditionalOn: 'Own Damage',
+    dependencies: [
+      { type: 'Requires', dependsOn: 'Own Damage', condition: 'Vehicle age ≤ 10 years' }
+    ],
+    constraints: [
+      { field: 'Vehicle Age', operator: '≤', value: '10 years' }
+    ],
+    lossBasis: 'Per Call-out (max 3/year)', reinstatement: 'Automatic (annual)',
+    benefitBasis: 'Service', claimsNotifPeriod: 'Immediate', claimsNotifUnit: '',
+    wordingDocs: [
+      { name: 'Roadside Assistance Terms', version: 'v2026.04', code: 'DOC-RSA-001' }
+    ]
+  },
+  {
+    id: 'COV-006', name: 'Windscreen Extension', code: 'COV-WS-001',
+    availability: 'addon', complete: true,
+    type: 'First Party — Glass',
+    description: 'Covers repair or replacement of the windscreen, rear window, and side glass panels. No impact on No Claims Discount.',
+    basisOfCoverage: 'Market Value',
+    sumInsured: '2,000', maxSingleLimit: '2,000', subLimit: '',
+    deductibleType: 'fixed', deductibleAmount: '75',
+    deductiblePct: '', minDeductible: '75', maxDeductible: '75',
+    copay: '0', waitingPeriod: 'None', annualAggregate: true,
+    defaultSelected: false,
+    mutualExclusions: [],
+    conditionalOn: '',
+    dependencies: [],
+    constraints: [
+      { field: 'Vehicle Age', operator: '≤', value: '15 years' }
+    ],
+    lossBasis: 'Per Occurrence', reinstatement: 'Automatic',
+    benefitBasis: 'Indemnity', claimsNotifPeriod: '14', claimsNotifUnit: 'days',
+    wordingDocs: [
+      { name: 'Glass Replacement Clause', version: 'v2026.04', code: 'DOC-WS-CL-001' }
+    ]
+  }
+];
+
+const VALUATION_BASES = ['Agreed Value','Market Value','Reinstatement Cost','Not Applicable'];
+const LIMIT_BASES = [
+  { value:'fixed', label:'Fixed Amount' },
+  { value:'percentage', label:'Percentage' },
+  { value:'formula', label:'Formula / Reference' },
+  { value:'none', label:'No Limit' }
+];
+const INSURED_ITEM_TYPES = [
+  'Vehicle','Tractor / Prime Mover','Trailer','Cargo / Goods in Transit',
+  'Building','Equipment / Machinery','Stock / Inventory','Contents',
+  'Network / Systems','Data / Records','Cyber Business Income',
+  'Employee / Worker','Payroll','Third Party','Business Income','Other'
+];
+const LIMIT_REFERENCES = [
+  'Vehicle Value','Market Value','Declared Value','Reinstatement Cost',
+  'Replacement Cost','Annual Payroll','Annual Revenue','Cargo Value','Other Reference'
+];
+const COVER_TYPES = [
+  'First Party — Property Damage','Third Party Liability','Cargo / Goods in Transit',
+  'Cyber — Network Security & Privacy Liability','Cyber — Incident Response',
+  'Business Interruption','Workers Compensation — Statutory Benefits',
+  'Employers Liability','Benefit — Personal Accident','Benefit — Medical / Indemnity',
+  'Benefit — Life','Service Benefit','First Party — Glass'
+];
+
+function makeInsuredItem(partial = {}) {
+  const defaultValuationBasis = partial.defaultValuationBasis || partial.basisOfCoverage || 'Market Value';
+  const allowed = Array.isArray(partial.allowedValuationBases) && partial.allowedValuationBases.length
+    ? partial.allowedValuationBases
+    : defaultValuationBasis === 'Not Applicable'
+      ? ['Not Applicable']
+      : [defaultValuationBasis];
+  return Object.assign({
+    id:`ITEM-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    name:'Primary insured item',
+    type:'Other',
+    allowedValuationBases:allowed,
+    defaultValuationBasis,
+    quoteValuationSelection:'Product default only',
+    underwriterValuationOverride:false,
+    limitBasis:'fixed',
+    limitAmount:'',
+    limitPercentage:'100',
+    limitReference:'Declared Value',
+    limitFormula:'100% of Declared Value',
+    underwriterLimitOverride:false
+  }, partial, { allowedValuationBases:allowed, defaultValuationBasis });
+}
+
+function defaultItemsForLine(lineOfBusiness, coverName) {
+  if (lineOfBusiness === 'Property') return [
+    makeInsuredItem({ name:'Building', type:'Building', allowedValuationBases:['Reinstatement Cost','Agreed Value'], defaultValuationBasis:'Reinstatement Cost', quoteValuationSelection:'Customer / agent may choose', limitBasis:'formula', limitFormula:'100% of Reinstatement Cost', limitReference:'Reinstatement Cost', underwriterValuationOverride:true, underwriterLimitOverride:true }),
+    makeInsuredItem({ name:'Equipment', type:'Equipment / Machinery', allowedValuationBases:['Agreed Value','Market Value','Reinstatement Cost'], defaultValuationBasis:'Agreed Value', quoteValuationSelection:'Customer / agent may choose', limitBasis:'fixed', limitAmount:'250,000', underwriterValuationOverride:true, underwriterLimitOverride:true }),
+    makeInsuredItem({ name:'Stock', type:'Stock / Inventory', allowedValuationBases:['Market Value','Agreed Value'], defaultValuationBasis:'Market Value', quoteValuationSelection:'Customer / agent may choose', limitBasis:'percentage', limitPercentage:'80', limitReference:'Declared Value', underwriterValuationOverride:true, underwriterLimitOverride:true })
+  ];
+  if (lineOfBusiness === 'Trucking') return [
+    makeInsuredItem({ name:'Truck / tractor', type:'Tractor / Prime Mover', allowedValuationBases:['Agreed Value','Market Value'], defaultValuationBasis:'Market Value', quoteValuationSelection:'Customer / agent may choose', limitBasis:'percentage', limitPercentage:'100', limitReference:'Vehicle Value', underwriterValuationOverride:true, underwriterLimitOverride:true }),
+    makeInsuredItem({ name:'Attached trailer', type:'Trailer', allowedValuationBases:['Agreed Value','Market Value'], defaultValuationBasis:'Agreed Value', quoteValuationSelection:'Product default only', limitBasis:'fixed', limitAmount:'75,000', underwriterValuationOverride:true, underwriterLimitOverride:true })
+  ];
+  if (lineOfBusiness === 'Cyber') return [
+    makeInsuredItem({ name:'Network and systems', type:'Network / Systems', allowedValuationBases:['Not Applicable'], defaultValuationBasis:'Not Applicable', limitBasis:'fixed', limitAmount:'1,000,000', underwriterLimitOverride:true }),
+    makeInsuredItem({ name:'Cyber business income', type:'Cyber Business Income', allowedValuationBases:['Not Applicable'], defaultValuationBasis:'Not Applicable', limitBasis:'formula', limitFormula:'90 days of verified gross profit loss', limitReference:'Annual Revenue', underwriterLimitOverride:true })
+  ];
+  if (lineOfBusiness === 'Workers Compensation') return [
+    makeInsuredItem({ name:'Covered employees', type:'Employee / Worker', allowedValuationBases:['Not Applicable'], defaultValuationBasis:'Not Applicable', limitBasis:'formula', limitFormula:'Statutory benefits per applicable workers compensation law', limitReference:'Annual Payroll', underwriterLimitOverride:false })
+  ];
+  return [makeInsuredItem({
+    name:coverName || 'Primary insured item',
+    type:'Vehicle',
+    allowedValuationBases:['Agreed Value','Market Value'],
+    defaultValuationBasis:'Market Value',
+    quoteValuationSelection:'Customer / agent may choose',
+    limitBasis:'fixed',
+    underwriterValuationOverride:true,
+    underwriterLimitOverride:true
+  })];
+}
+
+function createCoverageDefaults(partial = {}) {
+  const lineOfBusiness = partial.lineOfBusiness || 'Motor';
+  const items = partial.insuredItems || defaultItemsForLine(lineOfBusiness, partial.name);
+  return Object.assign({
+    id:`COV-${String(Date.now()).slice(-6)}`,
+    name:'New Cover', code:`COV-${String(Date.now()).slice(-5)}`,
+    availability:'optional', complete:false, type:'First Party — Property Damage',
+    description:'', lineOfBusiness, insuredItems:items,
+    deductibleType:'none', deductibleAmount:'', deductiblePct:'', deductiblePercentageBasis:'Claim Amount',
+    minDeductible:'', maxDeductible:'', copay:'0', waitingPeriod:'None',
+    subLimits:[], annualAggregate:false, aggregateBasis:'fixed', aggregateAmount:'', aggregatePercentage:'100', aggregateReference:'Declared Value', aggregateFormula:'',
+    underwriterDeductibleOverride:false, underwriterAggregateOverride:false,
+    underwriterAvailabilityOverride:false, underwriterConstraintOverride:false,
+    overrideRequiresReferral:true, overrideReasonRequired:true, overrideMaxPercent:'20',
+    defaultSelected:false, mutualExclusions:[], conditionalOn:'', dependencies:[], constraints:[],
+    lossBasis:'Per Occurrence', reinstatement:'Automatic (full limit)', benefitBasis:'Indemnity',
+    claimsNotifPeriod:'14', claimsNotifUnit:'days', wordingDocs:[]
+  }, partial, { insuredItems:items });
+}
+
+function normalizeCoverageModel(c) {
+  if (!c.lineOfBusiness) c.lineOfBusiness = PS.prototypeApp?.productById(productId)?.family || 'Motor';
+  if (!Array.isArray(c.insuredItems) || !c.insuredItems.length) {
+    const notApplicable = !c.sumInsured && /service|liability/i.test(`${c.type} ${c.name}`);
+    const defaultValuationBasis = notApplicable ? 'Not Applicable' : (c.basisOfCoverage || 'Market Value');
+    const allowedValuationBases = notApplicable
+      ? ['Not Applicable']
+      : /property|damage|glass/i.test(`${c.type} ${c.name}`)
+        ? [...new Set([defaultValuationBasis,'Agreed Value','Market Value','Reinstatement Cost'])].filter(v => v !== 'Not Applicable')
+        : [defaultValuationBasis];
+    c.insuredItems = [makeInsuredItem({
+      name:c.name === 'Own Damage' ? 'Insured vehicle' : c.name,
+      type:/vehicle|damage|glass|roadside|theft/i.test(`${c.type} ${c.name}`) ? 'Vehicle' : notApplicable ? 'Third Party' : 'Other',
+      allowedValuationBases,
+      defaultValuationBasis,
+      quoteValuationSelection:allowedValuationBases.length > 1 ? 'Customer / agent may choose' : 'Product default only',
+      underwriterValuationOverride:!notApplicable,
+      limitBasis:c.sumInsured ? 'fixed' : 'none',
+      limitAmount:c.sumInsured || '',
+      limitPercentage:'100',
+      limitReference:defaultValuationBasis === 'Reinstatement Cost' ? 'Reinstatement Cost' : 'Declared Value',
+      limitFormula:defaultValuationBasis === 'Reinstatement Cost' ? '100% of Reinstatement Cost' : '100% of Declared Value',
+      underwriterLimitOverride:!notApplicable
+    })];
+  } else {
+    c.insuredItems = c.insuredItems.map(item => makeInsuredItem(item));
+  }
+  if (!Array.isArray(c.subLimits)) c.subLimits = c.subLimit ? [{ name:'General sub-limit', basis:'fixed', amount:c.subLimit, percentage:'', reference:'Declared Value', formula:'' }] : [];
+  c.subLimits = c.subLimits.map(sub => Object.assign({ name:'Sub-limit', basis:'fixed', amount:'', percentage:'', reference:'Declared Value', formula:'' }, sub));
+  if (!c.aggregateBasis) c.aggregateBasis = 'fixed';
+  if (c.aggregateAmount === undefined) c.aggregateAmount = c.annualAggregate ? (c.maxSingleLimit || '') : '';
+  if (c.aggregatePercentage === undefined) c.aggregatePercentage = '100';
+  if (!c.aggregateReference) c.aggregateReference = 'Declared Value';
+  if (c.aggregateFormula === undefined) c.aggregateFormula = '';
+  if (c.deductiblePercentageBasis === undefined) c.deductiblePercentageBasis = 'Claim Amount';
+  if (c.underwriterDeductibleOverride === undefined) c.underwriterDeductibleOverride = false;
+  if (c.underwriterAggregateOverride === undefined) c.underwriterAggregateOverride = false;
+  if (c.underwriterAvailabilityOverride === undefined) c.underwriterAvailabilityOverride = false;
+  if (c.underwriterConstraintOverride === undefined) c.underwriterConstraintOverride = false;
+  if (c.overrideRequiresReferral === undefined) c.overrideRequiresReferral = true;
+  if (c.overrideReasonRequired === undefined) c.overrideReasonRequired = true;
+  if (c.overrideMaxPercent === undefined) c.overrideMaxPercent = '20';
+  if (!Array.isArray(c.mutualExclusions)) c.mutualExclusions = [];
+  if (!Array.isArray(c.dependencies)) c.dependencies = [];
+  if (!Array.isArray(c.constraints)) c.constraints = [];
+  return c;
+}
+
+const AVAIL_LABELS = {
+  mandatory: 'MANDATORY', optional: 'OPTIONAL', default: 'DEFAULT-ON', addon: 'ADD-ON'
+};
+const AVAIL_CSS = {
+  mandatory: 'avail-mandatory', optional: 'avail-optional', default: 'avail-default', addon: 'avail-addon'
+};
+
+/* ────────────────────────────────────────────────────────
+   STATE
+──────────────────────────────────────────────────────── */
+let activeCoverId = 'COV-001';
+let openSections  = new Set(['identity','valuation','deductible','limits','authority','availability','dependencies','constraints','claims','wording']);
+let productStatus = /DRAFT/i.test(new URLSearchParams(location.search).get('version') || '') ? 'draft' : 'published';
+let productId, productVersion;
+
+/* ────────────────────────────────────────────────────────
+   INIT
+──────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  productId      = params.get('product') || 'PRD-001';
+  productVersion = params.get('version') || '2026.04';
+  COVERS.forEach(normalizeCoverageModel);
+
+  const detailPanel = document.getElementById('detail-panel');
+  detailPanel.addEventListener('input', handleCoverageFieldChange);
+  detailPanel.addEventListener('change', handleCoverageFieldChange);
+
+  PS.nav.render('catalogue', [
+    { label: 'Product Catalogue', href: 'catalogue.html' },
+    { label: productId, href: `product-detail.html?id=${productId}` },
+    { label: `v${productVersion}`, href: `product-detail.html?id=${productId}&version=${productVersion}` },
+    { label: 'Coverage Studio', href: '#' }
+  ]);
+
+  document.getElementById('studio-title').textContent = `Coverage Studio`;
+  document.getElementById('studio-subtitle').textContent =
+    `${productId} · v${productVersion} — ${COVERS.length} covers configured · ${COVERS.filter(c=>c.availability==='mandatory').length} mandatory · ${COVERS.filter(c=>c.availability==='addon').length} optional add-ons`;
+
+  document.getElementById('ctx-count').innerHTML =
+    `<span class="studio-context-pill">
+      <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+      ${productId} · v${productVersion}
+    </span>
+    <span style="color:var(--color-muted)">·</span>
+    <span>${COVERS.length} covers &nbsp;·&nbsp; ${COVERS.filter(c=>c.availability==='mandatory').length} mandatory &nbsp;·&nbsp; ${COVERS.filter(c=>c.availability==='addon').length} optional add-ons</span>`;
+
+  document.getElementById('ctx-back-link').href = `product-detail.html?id=${productId}#studios`;
+
+  // Draft mode — hide read-only band
+  if (productStatus !== 'published') {
+    document.getElementById('readonly-band').style.display = 'none';
+  }
+
+  renderCoverList();
+  loadCover(activeCoverId);
+});
+
+/* ────────────────────────────────────────────────────────
+   COVER LIST
+──────────────────────────────────────────────────────── */
+function renderCoverList() {
+  const list = document.getElementById('cover-list');
+  list.innerHTML = COVERS.map(c => `
+    <div class="cover-item ${c.id === activeCoverId ? 'active' : ''}" onclick="loadCover('${c.id}')" id="cover-item-${c.id}">
+      <div class="cover-item-left">
+        ${!c.complete ? `<span class="cover-warn" title="Incomplete configuration">⚠</span>` : ''}
+        <span class="cover-item-name">${c.name}</span>
+      </div>
+      <span class="avail-badge ${AVAIL_CSS[c.availability]}">${AVAIL_LABELS[c.availability]}</span>
+    </div>
+  `).join('');
+}
+
+/* ────────────────────────────────────────────────────────
+   LOAD COVER DETAIL
+──────────────────────────────────────────────────────── */
+function loadCover(id) {
+  activeCoverId = id;
+  // Update sidebar active state
+  document.querySelectorAll('.cover-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`cover-item-${id}`)?.classList.add('active');
+
+  const cover = COVERS.find(c => c.id === id);
+  if (!cover) return;
+  renderDetailPanel(cover);
+}
+
+/* ────────────────────────────────────────────────────────
+   RENDER DETAIL PANEL
+──────────────────────────────────────────────────────── */
+function renderDetailPanel(c) {
+  const ro = productStatus === 'published'; // read-only
+  const F = (label, value, mono=false, type='text', opts=[]) => fieldRow(label, value, mono, type, opts, ro);
+
+  const panel = document.getElementById('detail-panel');
+  panel.innerHTML = `
+    <!-- Cover name + code header -->
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-2)">
+      <h2 style="font-size:20px;font-weight:700;color:var(--color-ink)">${c.name}</h2>
+      <span class="avail-badge ${AVAIL_CSS[c.availability]}" style="font-size:12px;height:22px;padding:0 10px">${AVAIL_LABELS[c.availability]}</span>
+      <span class="text-mono" style="font-size:12px;color:var(--color-muted)">${c.code}</span>
+    </div>
+
+    ${buildSection('identity', '1', 'Cover Identity', `${c.type} · ${c.lineOfBusiness}`, `
+      <div class="form-grid-2">
+        ${boundText('Cover Name','name',c.name,ro)}
+        <div class="form-group"><label class="form-label">Cover Code</label><input type="text" class="form-control text-mono" value="${esc(c.code)}" readonly></div>
+        ${boundSelect('Cover Type','type',c.type,COVER_TYPES.includes(c.type)?COVER_TYPES:[c.type,...COVER_TYPES],ro)}
+        ${boundSelect('Line of Business','lineOfBusiness',c.lineOfBusiness,PS.data.productFamilies,ro)}
+        ${F('Cover Version', productVersion, true)}
+        <div class="form-group span-2">
+          <label class="form-label">Description</label>
+          ${ro ? `<p style="font-size:14px;line-height:22px;color:var(--color-ink)">${c.description}</p>`
+               : `<textarea class="form-control" rows="3" data-cover-field="description">${c.description}</textarea>`}
+        </div>
+      </div>
+    `)}
+
+    ${buildSection('valuation', '2', 'Insured Items, Valuation & Limits', formatFinancialSummary(c), `
+      <div class="term-flow" style="margin-bottom:var(--space-4)">
+        <span class="term-flow-step">Coverage</span><span>→</span>
+        <span class="term-flow-step">Insured item</span><span>→</span>
+        <span class="term-flow-step">Valuation basis</span><span>→</span>
+        <span class="term-flow-step">Limit basis</span><span>→</span>
+        <span class="term-flow-step">Limit</span>
+      </div>
+      <div class="callout callout-info" style="margin-bottom:var(--space-4)">
+        <div class="callout-body"><strong>Valuation and limit are separate.</strong> Valuation determines how the loss value is calculated. Limit determines the maximum amount payable.</div>
+      </div>
+      ${c.insuredItems.map((item,index) => renderInsuredItemCard(c,item,index,ro)).join('')}
+      ${ro ? '' : `<button class="btn btn-secondary btn-sm" type="button" onclick="addInsuredItem()">+ Add insured item</button>`}
+    `)}
+
+    ${buildSection('deductible', '3', 'Deductible & Co-pay', formatDeductibleSummary(c), `
+      <label class="form-label" style="margin-bottom:var(--space-3)">Deductible Type</label>
+      <div class="radio-group" style="flex-direction:row;gap:var(--space-3);margin-bottom:var(--space-4)">
+        ${['fixed','percentage','none'].map(v => `
+        <label class="radio-option ${c.deductibleType===v?'selected':''}" style="flex:1">
+          <input type="radio" name="ded-${c.id}" value="${v}" data-cover-field="deductibleType" ${c.deductibleType===v?'checked':''} ${ro?'disabled':''}>
+          ${v==='fixed'?'Fixed Amount':v==='percentage'?'Percentage':'None'}
+        </label>`).join('')}
+      </div>
+      ${renderDeductibleFields(c,ro)}
+      <div class="form-grid-2" style="margin-top:var(--space-4)">
+        ${boundSelect('Waiting Period','waitingPeriod',c.waitingPeriod,['None','7 days','14 days','30 days','60 days','90 days'],ro)}
+        ${boundText('Co-pay (%)','copay',c.copay,ro,'0')}
+      </div>
+    `)}
+
+    ${buildSection('limits', '4', 'Sub-limits & Aggregate', `${c.subLimits.length} sub-limit${c.subLimits.length===1?'':'s'} · ${c.annualAggregate?'Aggregate cap':'No aggregate cap'}`, `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3)">
+        <div><div style="font-size:13px;font-weight:600">Sub-limits</div><div class="form-help">Optional lower caps for a peril, benefit, expense, or insured item.</div></div>
+        ${ro ? '' : `<button class="btn btn-secondary btn-sm" type="button" onclick="addSubLimit()">+ Add sub-limit</button>`}
+      </div>
+      ${renderSubLimits(c,ro)}
+      <div style="border-top:1px solid var(--color-border);margin-top:var(--space-5);padding-top:var(--space-5)">
+        <div class="form-group">
+          <label class="form-label">Annual Aggregate</label>
+          <div class="toggle-wrap">
+            ${toggleControl('annualAggregate',c.annualAggregate,ro)}
+            <span>${c.annualAggregate ? 'Aggregate cap enabled' : 'No annual aggregate cap'}</span>
+          </div>
+        </div>
+        ${c.annualAggregate ? renderAggregateFields(c,ro) : '<p class="form-help">Claims remain subject to each insured item limit and any configured sub-limits.</p>'}
+      </div>
+    `)}
+
+    ${buildSection('authority', '5', 'Underwriter Override Authority', formatAuthoritySummary(c), `
+      <div class="callout callout-warning" style="margin-bottom:var(--space-4)">
+        <div class="callout-body">Override permissions are explicit. Every override requires the underwriter identity, old value, new value, reason, and timestamp in the audit trail.</div>
+      </div>
+      <div class="authority-grid">
+        ${authorityToggle('Deductible','Allow the underwriter to change deductible amount or percentage.','underwriterDeductibleOverride',c.underwriterDeductibleOverride,ro)}
+        ${authorityToggle('Sub-limits / aggregate','Allow the underwriter to change sub-limits or the annual aggregate.','underwriterAggregateOverride',c.underwriterAggregateOverride,ro)}
+        ${authorityToggle('Availability / optionality','Allow the underwriter to add, remove, or default this cover at quote time.','underwriterAvailabilityOverride',c.underwriterAvailabilityOverride,ro)}
+        ${authorityToggle('Eligibility constraints','Allow the underwriter to waive a cover-level eligibility constraint.','underwriterConstraintOverride',c.underwriterConstraintOverride,ro)}
+      </div>
+      <div class="form-grid-3" style="margin-top:var(--space-5)">
+        ${boundText('Maximum variation (%)','overrideMaxPercent',c.overrideMaxPercent,ro,'20')}
+        ${boundSelect('Referral requirement','overrideRequiresReferral',c.overrideRequiresReferral?'Referral required':'No referral',['Referral required','No referral'],ro,true)}
+        ${boundSelect('Reason requirement','overrideReasonRequired',c.overrideReasonRequired?'Reason required':'Reason optional',['Reason required','Reason optional'],ro,true)}
+      </div>
+      <p class="form-help">Valuation and item-limit override permissions are configured per insured item above.</p>
+    `)}
+
+    ${buildSection('availability', '6', 'Availability & Optionality', `${AVAIL_LABELS[c.availability]}${c.conditionalOn?' · Conditional on '+c.conditionalOn:''}`, `
+      <div class="form-grid-2">
+        ${boundSelect('Availability','availability',c.availability,['mandatory','optional','default','addon'],ro,false,null,
+          { mandatory:'Mandatory', optional:'Optional', default:'Default-Selected', addon:'Optional Add-on' })}
+        <div class="form-group">
+          <label class="form-label">Default Selected</label>
+          <div class="toggle-wrap">
+            <label class="toggle-switch">
+              <input type="checkbox" data-cover-field="defaultSelected" ${c.defaultSelected?'checked':''} ${ro||c.availability==='mandatory'?'disabled':''}>
+              <div class="toggle-slider"></div><div class="toggle-dot"></div>
+            </label>
+            <span>${c.defaultSelected ? 'Yes' : 'No'}${c.availability==='mandatory'?' (enforced as Mandatory)':''}</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Conditional On</label>
+          <select class="form-control" data-cover-field="conditionalOn" ${ro?'disabled':''}>
+            <option value="">None</option>
+            ${COVERS.filter(x=>x.id!==c.id).map(x=>`<option value="${esc(x.name)}" ${c.conditionalOn===x.name?'selected':''}>${esc(x.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mutual Exclusions</label>
+          <select class="form-control" data-cover-field="mutualExclusions" multiple ${ro?'disabled':''}>
+            <option value="">None</option>
+            ${COVERS.filter(x=>x.id!==c.id).map(x=>`<option value="${esc(x.name)}" ${c.mutualExclusions.includes(x.name)?'selected':''}>${esc(x.name)}</option>`).join('')}
+          </select>
+          <span class="form-help">Hold Ctrl/Cmd to select multiple</span>
+        </div>
+      </div>
+    `)}
+
+    ${buildSection('dependencies', '7', 'Dependencies', c.dependencies.length ? `${c.dependencies.length} rule${c.dependencies.length>1?'s':''} configured` : 'No dependencies', `
+      <table class="dep-table">
+        <thead><tr><th>Type</th><th>Depends On</th><th>Condition</th>${ro?'':'<th style="width:40px"></th>'}</tr></thead>
+        <tbody id="dep-body-${c.id}">
+          ${c.dependencies.map((d,i) => `
+          <tr>
+            <td>${ro ? d.type : `<select class="form-control" data-dependency-field="type" data-dependency-index="${i}" style="min-width:110px"><option ${d.type==='Requires'?'selected':''}>Requires</option><option ${d.type==='Excludes'?'selected':''}>Excludes</option><option ${d.type==='Bundles with'?'selected':''}>Bundles with</option></select>`}</td>
+            <td>${ro ? d.dependsOn : `<select class="form-control" data-dependency-field="dependsOn" data-dependency-index="${i}">${COVERS.filter(x=>x.id!==c.id).map(x=>`<option ${x.name===d.dependsOn?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`}</td>
+            <td>${ro ? `<span style="color:var(--color-muted)">${esc(d.condition)}</span>` : `<input type="text" class="form-control" value="${esc(d.condition)}" data-dependency-field="condition" data-dependency-index="${i}">`}</td>
+            ${ro ? '' : `<td><button class="btn btn-ghost btn-sm" onclick="removeDep(${i})" title="Remove">✕</button></td>`}
+          </tr>`).join('')}
+          ${c.dependencies.length===0 ? `<tr><td colspan="4" style="color:var(--color-muted);font-style:italic;text-align:center;padding:16px">No dependency rules. This cover is independent.</td></tr>` : ''}
+        </tbody>
+      </table>
+      ${ro ? '' : `<button class="btn btn-ghost btn-sm" onclick="addDep('${c.id}')">+ Add Dependency Rule</button>`}
+      <div class="callout callout-info" style="margin-top:var(--space-4)">
+        <div class="callout-body" style="font-size:12px">Dependencies control how this cover interacts with others at quote time. Use Eligibility Studio for risk-level rules.</div>
+      </div>
+    `)}
+
+    ${buildSection('constraints', '8', 'Eligibility Constraints', `${c.constraints.length} constraint${c.constraints.length!==1?'s':''} configured`, `
+      <table class="dep-table">
+        <thead><tr><th>Field</th><th>Operator</th><th>Value</th>${ro?'':'<th style="width:40px"></th>'}</tr></thead>
+        <tbody>
+          ${c.constraints.map((con,i) => `
+          <tr>
+            <td>${ro ? `<strong>${esc(con.field)}</strong>` : `<input type="text" class="form-control" value="${esc(con.field)}" data-constraint-field="field" data-constraint-index="${i}">`}</td>
+            <td>${ro ? `<span class="op-badge">${esc(con.operator)}</span>` : `<select class="form-control" data-constraint-field="operator" data-constraint-index="${i}" style="min-width:100px"><option ${con.operator==='≤'?'selected':''}>≤</option><option ${con.operator==='≥'?'selected':''}>≥</option><option ${con.operator==='is'?'selected':''}>is</option><option ${con.operator==='is one of'?'selected':''}>is one of</option><option ${con.operator==='is not'?'selected':''}>is not</option></select>`}</td>
+            <td>${ro ? esc(con.value) : `<input type="text" class="form-control" value="${esc(con.value)}" data-constraint-field="value" data-constraint-index="${i}">`}</td>
+            ${ro ? '' : `<td><button class="btn btn-ghost btn-sm" type="button" onclick="removeConstraint(${i})" title="Remove">✕</button></td>`}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${ro ? '' : `<button class="btn btn-ghost btn-sm" type="button" onclick="addConstraint()" style="margin-top:var(--space-2)">+ Add Constraint</button>`}
+      <p style="font-size:12px;color:var(--color-muted);margin-top:var(--space-3)">Full eligibility logic is managed in Eligibility Studio. These constraints are cover-level pre-filters applied before eligibility rules.</p>
+    `)}
+
+    ${buildSection('claims', '9', 'Claims Behaviour', `${c.lossBasis} · ${c.benefitBasis}`, `
+      <div class="form-grid-2">
+        ${boundSelect('Loss Basis','lossBasis',c.lossBasis,['Per Occurrence','Per Person','Per Call-out (max 3/year)','Per Claim'],ro)}
+        ${boundSelect('Reinstatement','reinstatement',c.reinstatement,['Automatic (full limit)','Automatic (annual)','None — total loss','None (aggregate)'],ro)}
+        ${boundSelect('Benefit Basis','benefitBasis',c.benefitBasis,['Indemnity','Fixed Benefit','Service','Agreed Value'],ro)}
+        <div class="form-group">
+          <label class="form-label">Claims Notification Period</label>
+          <div style="display:flex;gap:var(--space-2)">
+            <input type="text" class="form-control" value="${esc(c.claimsNotifPeriod)}" data-cover-field="claimsNotifPeriod" style="width:80px" ${ro?'readonly':''}>
+            <select class="form-control" data-cover-field="claimsNotifUnit" style="width:100px" ${ro?'disabled':''}>
+              <option value="days" ${c.claimsNotifUnit==='days'?'selected':''}>days</option>
+              <option value="hours" ${c.claimsNotifUnit==='hours'?'selected':''}>hours</option>
+              <option value="" ${c.claimsNotifUnit===''?'selected':''}>Immediate</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Applicable Deductible</label>
+          <input type="text" class="form-control" value="${c.deductibleType==='none'?'None':c.deductibleType==='fixed'?`$${c.deductibleAmount} (Fixed)`:c.deductiblePct+'% of Claim'}" readonly style="background:var(--color-surface);color:var(--color-muted)">
+          <span class="form-help">Auto-linked from Financial Terms §2</span>
+        </div>
+      </div>
+    `)}
+
+    ${buildSection('wording', '10', 'Wording Reference', `${c.wordingDocs.length} document${c.wordingDocs.length!==1?'s':''} linked`, `
+      ${c.wordingDocs.map(d => `
+      <div class="doc-row">
+        <svg class="doc-row-icon" width="18" height="18" viewBox="0 0 256 256" fill="none"><path d="M213.66 82.34l-56-56A8 8 0 00152 24H56a16 16 0 00-16 16v176a16 16 0 0016 16h144a16 16 0 0016-16V88a8 8 0 00-2.34-5.66zM160 51.31L188.69 80H160zM200 216H56V40h88v48a8 8 0 008 8h48v120z" fill="currentColor"/></svg>
+        <div style="flex:1">
+          <div class="doc-row-name">${d.name}</div>
+          <div class="doc-row-code">${d.code}</div>
+        </div>
+        <span class="doc-row-ver">${d.version}</span>
+        <a href="document-studio.html?product=${productId}" class="btn btn-ghost btn-sm">View →</a>
+      </div>`).join('')}
+      ${ro ? '' : `<button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Link Document','Document picker coming from Document Studio.')">+ Link Document</button>`}
+      <div style="margin-top:var(--space-4)">
+        <a href="document-studio.html?product=${productId}" class="btn btn-ghost btn-sm">View in Document Studio →</a>
+      </div>
+    `)}
+
+    ${!ro ? `
+    <div style="display:flex;justify-content:flex-end;gap:var(--space-3);padding:var(--space-4) 0">
+      <button class="btn btn-secondary" onclick="PS.actionResult('info','Discarded','Changes to this cover discarded.')">Discard Changes</button>
+      <button class="btn btn-primary" onclick="saveCover()">Save Cover</button>
+    </div>` : ''}
+  `;
+
+  // Open first section by default
+  openSections.forEach(id => {
+    const body = document.getElementById(`sec-body-${id}`);
+    const chev = document.getElementById(`sec-chev-${id}`);
+    if (body) { body.classList.add('open'); }
+    if (chev) { chev.classList.add('open'); }
+  });
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleControl(field, checked, ro, itemIndex = null) {
+  const itemAttr = itemIndex === null ? `data-cover-field="${field}"` : `data-item-field="${field}" data-item-index="${itemIndex}"`;
+  return `<label class="toggle-switch">
+    <input type="checkbox" ${itemAttr} ${checked?'checked':''} ${ro?'disabled':''}>
+    <div class="toggle-slider"></div><div class="toggle-dot"></div>
+  </label>`;
+}
+
+function boundText(label, field, value, ro, placeholder = '', itemIndex = null) {
+  const attrs = itemIndex === null ? `data-cover-field="${field}"` : `data-item-field="${field}" data-item-index="${itemIndex}"`;
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <input type="text" class="form-control" value="${esc(value)}" placeholder="${esc(placeholder)}" ${attrs} ${ro?'readonly':''}>
+  </div>`;
+}
+
+function boundSelect(label, field, value, options, ro, booleanMode = false, itemIndex = null, labels = null) {
+  const attrs = itemIndex === null ? `data-cover-field="${field}"` : `data-item-field="${field}" data-item-index="${itemIndex}"`;
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <select class="form-control" ${attrs} ${booleanMode?'data-boolean-select="true"':''} ${ro?'disabled':''}>
+      ${options.map(option => `<option value="${esc(option)}" ${option===value?'selected':''}>${esc(labels?.[option] || option)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+function renderInsuredItemCard(c, item, index, ro) {
+  const defaultOptions = item.allowedValuationBases.length ? item.allowedValuationBases : ['Not Applicable'];
+  return `<div class="item-term-card">
+    <div class="item-term-header">
+      <div><div class="item-term-title">Insured item ${index + 1}</div><div class="form-help">Valuation and payment limit for this specific item.</div></div>
+      ${ro || c.insuredItems.length === 1 ? '' : `<button class="btn btn-ghost btn-sm" type="button" onclick="removeInsuredItem(${index})">Remove item</button>`}
+    </div>
+    <div class="form-grid-2">
+      ${boundText('Item name','name',item.name,ro,'e.g. Building',index)}
+      ${boundSelect('Insured item type','type',item.type,INSURED_ITEM_TYPES,ro,false,index)}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Allowed Valuation Basis</label>
+      <div class="choice-grid">
+        ${VALUATION_BASES.map(basis => `<label class="choice-chip">
+          <input type="checkbox" value="${basis}" data-item-array-field="allowedValuationBases" data-item-index="${index}" ${item.allowedValuationBases.includes(basis)?'checked':''} ${ro?'disabled':''}>
+          <span>${basis}</span>
+        </label>`).join('')}
+      </div>
+      <span class="form-help">Only checked options can be used for this insured item.</span>
+    </div>
+    <div class="form-grid-2">
+      ${boundSelect('Default Valuation Basis','defaultValuationBasis',item.defaultValuationBasis,defaultOptions,ro,false,index)}
+      ${boundSelect('Allowed During Quote','quoteValuationSelection',item.quoteValuationSelection,['Product default only','Customer / agent may choose','Underwriter selects'],ro,false,index)}
+    </div>
+    <div class="authority-row" style="margin-bottom:var(--space-4)">
+      <div><div class="authority-label">Underwriter can override valuation</div><div class="authority-help">Allows a permitted valuation basis to be changed for this item with audit reason.</div></div>
+      ${toggleControl('underwriterValuationOverride',item.underwriterValuationOverride,ro,index)}
+    </div>
+    <div style="border-top:1px solid var(--color-border);padding-top:var(--space-4)">
+      <div class="form-grid-2">
+        ${boundSelect('Limit Basis','limitBasis',LIMIT_BASES.find(x=>x.value===item.limitBasis)?.label || 'Fixed Amount',LIMIT_BASES.map(x=>x.label),ro,false,index)}
+        <div class="form-group"><label class="form-label">Underwriter Limit Override</label><div class="toggle-wrap">${toggleControl('underwriterLimitOverride',item.underwriterLimitOverride,ro,index)}<span>${item.underwriterLimitOverride?'Allowed':'Not allowed'}</span></div></div>
+      </div>
+      ${renderItemLimitFields(item,index,ro)}
+    </div>
+  </div>`;
+}
+
+function renderItemLimitFields(item, index, ro) {
+  const basisValue = LIMIT_BASES.find(x => x.value === item.limitBasis)?.label || item.limitBasis;
+  if (basisValue === 'Fixed Amount' || item.limitBasis === 'fixed') {
+    return `<div class="form-grid-2">${boundText('Limit Amount ($)','limitAmount',item.limitAmount,ro,'100,000',index)}<div class="form-group"><label class="form-label">Payment Rule</label><div class="field-value" style="padding:7px 0">Maximum payable for this insured item</div></div></div>`;
+  }
+  if (basisValue === 'Percentage' || item.limitBasis === 'percentage') {
+    return `<div class="form-grid-2">${boundText('Limit Percentage (%)','limitPercentage',item.limitPercentage,ro,'80',index)}${boundSelect('Percentage Of','limitReference',item.limitReference,LIMIT_REFERENCES,ro,false,index)}</div>`;
+  }
+  if (basisValue === 'Formula / Reference' || item.limitBasis === 'formula') {
+    return `<div class="form-grid-2">${boundText('Formula / Reference','limitFormula',item.limitFormula,ro,'100% of Reinstatement Cost',index)}${boundSelect('Reference Value','limitReference',item.limitReference,LIMIT_REFERENCES,ro,false,index)}</div>`;
+  }
+  return '<div class="callout callout-info"><div class="callout-body">No monetary limit applies. Use only where the coverage wording permits an unlimited or non-monetary benefit.</div></div>';
+}
+
+function renderDeductibleFields(c, ro) {
+  if (c.deductibleType === 'none') return '<p class="form-help">No deductible applies to this coverage.</p>';
+  if (c.deductibleType === 'fixed') return `<div class="form-grid-3">
+    ${boundText('Deductible Amount ($)','deductibleAmount',c.deductibleAmount,ro,'500')}
+    ${boundText('Minimum Deductible ($)','minDeductible',c.minDeductible,ro,'200')}
+    ${boundText('Maximum Deductible ($)','maxDeductible',c.maxDeductible,ro,'2,000')}
+  </div>`;
+  return `<div class="form-grid-3">
+    ${boundText('Deductible Percentage (%)','deductiblePct',c.deductiblePct,ro,'10')}
+    ${boundSelect('Percentage Of','deductiblePercentageBasis',c.deductiblePercentageBasis,['Claim Amount','Item Limit','Loss Amount'],ro)}
+    ${boundText('Minimum Deductible ($)','minDeductible',c.minDeductible,ro,'500')}
+  </div>`;
+}
+
+function renderSubLimits(c, ro) {
+  if (!c.subLimits.length) return '<div class="empty-state" style="padding:var(--space-6)"><div class="empty-state-title">No sub-limits</div><div class="empty-state-desc" style="margin-bottom:0">This coverage uses only its insured item limits.</div></div>';
+  return `<table class="dep-table"><thead><tr><th>Name / Peril</th><th>Basis</th><th>Value / Reference</th>${ro?'':'<th style="width:44px"></th>'}</tr></thead><tbody>
+    ${c.subLimits.map((sub,index) => `<tr>
+      <td><input class="form-control" value="${esc(sub.name)}" data-sublimit-field="name" data-sublimit-index="${index}" ${ro?'readonly':''}></td>
+      <td><select class="form-control" data-sublimit-field="basis" data-sublimit-index="${index}" ${ro?'disabled':''}>${LIMIT_BASES.filter(x=>x.value!=='none').map(x=>`<option value="${x.value}" ${sub.basis===x.value?'selected':''}>${x.label}</option>`).join('')}</select></td>
+      <td><input class="form-control" value="${esc(sub.basis==='fixed'?sub.amount:sub.basis==='percentage'?`${sub.percentage}% of ${sub.reference}`:sub.formula)}" data-sublimit-field="displayValue" data-sublimit-index="${index}" ${ro?'readonly':''}></td>
+      ${ro?'':`<td><button class="btn btn-ghost btn-sm" type="button" onclick="removeSubLimit(${index})" aria-label="Remove sub-limit">×</button></td>`}
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+function renderAggregateFields(c, ro) {
+  return `<div class="form-grid-2">
+    ${boundSelect('Aggregate Basis','aggregateBasis',LIMIT_BASES.find(x=>x.value===c.aggregateBasis)?.label || 'Fixed Amount',LIMIT_BASES.filter(x=>x.value!=='none').map(x=>x.label),ro)}
+    ${c.aggregateBasis==='fixed' ? boundText('Aggregate Amount ($)','aggregateAmount',c.aggregateAmount,ro,'300,000') : c.aggregateBasis==='percentage' ? boundText('Aggregate Percentage (%)','aggregatePercentage',c.aggregatePercentage,ro,'100') : boundText('Aggregate Formula / Reference','aggregateFormula',c.aggregateFormula,ro,'3 × per-occurrence limit')}
+    ${c.aggregateBasis==='percentage' ? boundSelect('Percentage Of','aggregateReference',c.aggregateReference,LIMIT_REFERENCES,ro) : ''}
+  </div>`;
+}
+
+function authorityToggle(label, help, field, checked, ro) {
+  return `<div class="authority-row"><div><div class="authority-label">${label}</div><div class="authority-help">${help}</div></div>${toggleControl(field,checked,ro)}</div>`;
+}
+
+function formatDeductibleSummary(c) {
+  if (c.deductibleType === 'none') return 'No deductible';
+  if (c.deductibleType === 'fixed') return `$${c.deductibleAmount || '0'} fixed`;
+  return `${c.deductiblePct || '0'}% of ${c.deductiblePercentageBasis}`;
+}
+
+function formatAuthoritySummary(c) {
+  const itemPermissions = c.insuredItems.reduce((count,item) => count + Number(item.underwriterValuationOverride) + Number(item.underwriterLimitOverride), 0);
+  const coveragePermissions = ['underwriterDeductibleOverride','underwriterAggregateOverride','underwriterAvailabilityOverride','underwriterConstraintOverride'].filter(field => c[field]).length;
+  const count = itemPermissions + coveragePermissions;
+  return count ? `${count} override permission${count===1?'':'s'} enabled` : 'No override permissions';
+}
+
+function handleCoverageFieldChange(event) {
+  const el = event.target;
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  let rerender = false;
+  if (el.dataset.itemArrayField) {
+    const item = c.insuredItems[Number(el.dataset.itemIndex)];
+    const field = el.dataset.itemArrayField;
+    const values = new Set(item[field] || []);
+    el.checked ? values.add(el.value) : values.delete(el.value);
+    if (!values.size) { values.add(el.value); el.checked = true; }
+    item[field] = [...values];
+    if (!item[field].includes(item.defaultValuationBasis)) item.defaultValuationBasis = item[field][0];
+    rerender = event.type === 'change';
+  } else if (el.dataset.itemField) {
+    const item = c.insuredItems[Number(el.dataset.itemIndex)];
+    if (!item) return;
+    item[el.dataset.itemField] = el.type === 'checkbox' ? el.checked : normalizeLimitBasis(el.dataset.itemField, el.value);
+    rerender = event.type === 'change' && ['limitBasis','defaultValuationBasis','underwriterValuationOverride','underwriterLimitOverride'].includes(el.dataset.itemField);
+  } else if (el.dataset.sublimitField) {
+    const sub = c.subLimits[Number(el.dataset.sublimitIndex)];
+    if (!sub) return;
+    if (el.dataset.sublimitField === 'basis') { sub.basis = el.value; rerender = true; }
+    else if (el.dataset.sublimitField === 'displayValue') {
+      if (sub.basis === 'fixed') sub.amount = el.value;
+      else if (sub.basis === 'percentage') sub.percentage = el.value.replace(/[^0-9.]/g,'');
+      else sub.formula = el.value;
+    } else sub[el.dataset.sublimitField] = el.value;
+  } else if (el.dataset.dependencyField) {
+    const dependency = c.dependencies[Number(el.dataset.dependencyIndex)];
+    if (dependency) dependency[el.dataset.dependencyField] = el.value;
+  } else if (el.dataset.constraintField) {
+    const constraint = c.constraints[Number(el.dataset.constraintIndex)];
+    if (constraint) constraint[el.dataset.constraintField] = el.value;
+  } else if (el.dataset.coverField) {
+    const field = el.dataset.coverField;
+    let value = el.multiple ? [...el.selectedOptions].map(option => option.value).filter(Boolean) : el.type === 'checkbox' ? el.checked : el.value;
+    if (el.dataset.booleanSelect === 'true') value = /required$/i.test(value);
+    value = normalizeLimitBasis(field,value);
+    c[field] = value;
+    rerender = event.type === 'change' && ['deductibleType','annualAggregate','aggregateBasis','underwriterDeductibleOverride','underwriterAggregateOverride','underwriterAvailabilityOverride','underwriterConstraintOverride','availability','defaultSelected','conditionalOn','mutualExclusions','lossBasis','benefitBasis'].includes(field);
+    if (event.type === 'change' && ['availability','name'].includes(field)) renderCoverList();
+  }
+  if (rerender) renderDetailPanel(c);
+}
+
+function normalizeLimitBasis(field, value) {
+  if (!['limitBasis','aggregateBasis'].includes(field)) return value;
+  return LIMIT_BASES.find(option => option.label === value)?.value || value;
+}
+
+function addInsuredItem() {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  c.insuredItems.push(makeInsuredItem({ name:`Insured item ${c.insuredItems.length + 1}`, type:'Other', allowedValuationBases:['Agreed Value','Market Value','Reinstatement Cost'], defaultValuationBasis:'Market Value', quoteValuationSelection:'Customer / agent may choose' }));
+  renderDetailPanel(c);
+}
+
+function removeInsuredItem(index) {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c || c.insuredItems.length === 1) return;
+  c.insuredItems.splice(index,1);
+  renderDetailPanel(c);
+}
+
+function addSubLimit() {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  c.subLimits.push({ name:'New sub-limit', basis:'fixed', amount:'', percentage:'', reference:'Declared Value', formula:'' });
+  renderDetailPanel(c);
+}
+
+function removeSubLimit(index) {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  c.subLimits.splice(index,1);
+  renderDetailPanel(c);
+}
+
+function addDep() {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  const target = COVERS.find(cover => cover.id !== c.id);
+  c.dependencies.push({ type:'Requires', dependsOn:target?.name || '', condition:'If selected' });
+  renderDetailPanel(c);
+}
+
+function removeDep(index) {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  c.dependencies.splice(index,1);
+  renderDetailPanel(c);
+}
+
+function addConstraint() {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  c.constraints.push({ field:'Risk field', operator:'is', value:'Value' });
+  renderDetailPanel(c);
+}
+
+function removeConstraint(index) {
+  const c = COVERS.find(cover => cover.id === activeCoverId);
+  if (!c) return;
+  c.constraints.splice(index,1);
+  renderDetailPanel(c);
+}
+
+function buildSection(id, num, title, subtitle, content) {
+  return `
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection('${id}')" aria-expanded="${openSections.has(id)}">
+      <div class="section-header-left">
+        <div class="section-number">${num}</div>
+        <div>
+          <div class="section-title">${title}</div>
+          <div class="section-subtitle">${subtitle}</div>
+        </div>
+      </div>
+      <svg class="section-chevron ${openSections.has(id)?'open':''}" id="sec-chev-${id}" width="16" height="16" viewBox="0 0 256 256" fill="none">
+        <path d="M181.66 133.66l-80 80a8 8 0 01-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0111.32-11.32l80 80a8 8 0 010 11.32z" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="section-body ${openSections.has(id)?'open':''}" id="sec-body-${id}">
+      <div class="section-inner">${content}</div>
+    </div>
+  </div>`;
+}
+
+function toggleSection(id) {
+  const body = document.getElementById(`sec-body-${id}`);
+  const chev = document.getElementById(`sec-chev-${id}`);
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  if (isOpen) { body.classList.remove('open'); chev?.classList.remove('open'); openSections.delete(id); }
+  else         { body.classList.add('open');    chev?.classList.add('open');    openSections.add(id); }
+}
+
+function fieldRow(label, value, mono=false, type='text', opts=[], readonly=false) {
+  if (readonly) {
+    return `<div class="form-group"><label class="form-label">${label}</label>
+      <div class="field-value${mono?' mono':''}" style="font-size:14px;padding:6px 0">${value||'—'}</div>
+    </div>`;
+  }
+  if (type === 'select') {
+    return `<div class="form-group"><label class="form-label">${label}</label>
+      <select class="form-control">${opts.map(o=>`<option ${o===value?'selected':''}>${o}</option>`).join('')}</select>
+    </div>`;
+  }
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <input type="text" class="form-control" value="${value||''}" ${mono?'style="font-family:\'IBM Plex Mono\',monospace"':''} ${readonly?'readonly':''}>
+  </div>`;
+}
+
+function formatFinancialSummary(c) {
+  const valuations = [...new Set(c.insuredItems.map(item => item.defaultValuationBasis))];
+  const valuation = valuations.length > 1 ? 'Mixed valuation' : valuations[0];
+  return `${c.insuredItems.length} insured item${c.insuredItems.length===1?'':'s'} · ${valuation} · limits configured per item`;
+}
+
+function saveCover() {
+  PS.actionResult('success', 'Cover saved', `"${COVERS.find(c=>c.id===activeCoverId)?.name}" has been saved.`);
+}
+
+/* ────────────────────────────────────────────────────────
+   ADD COVER MODAL
+──────────────────────────────────────────────────────── */
+function openAddCoverModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Add Cover</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label" for="ac-name">Cover Name <span class="required">*</span></label>
+          <input type="text" id="ac-name" class="form-control" placeholder="e.g. Fire & Allied Perils">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ac-type">Cover Type <span class="required">*</span></label>
+          <select id="ac-type" class="form-control">
+            <option value="">Select…</option>
+            ${COVER_TYPES.map(type => `<option>${type}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ac-lob">Line of Business <span class="required">*</span></label>
+          <select id="ac-lob" class="form-control">
+            ${PS.data.productFamilies.map(family => `<option ${family===(PS.prototypeApp?.productById(productId)?.family || 'Motor')?'selected':''}>${family}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ac-avail">Availability <span class="required">*</span></label>
+          <select id="ac-avail" class="form-control">
+            <option value="mandatory">Mandatory</option>
+            <option value="optional">Optional</option>
+            <option value="default">Default-Selected</option>
+            <option value="addon">Optional Add-on</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Start from Library Template?</label>
+          <div class="toggle-wrap">
+            <label class="toggle-switch" onclick="toggleLibPicker()">
+              <input type="checkbox" id="ac-lib-toggle">
+              <div class="toggle-slider"></div><div class="toggle-dot"></div>
+            </label>
+            <span>Use a template</span>
+          </div>
+        </div>
+        <div class="form-group span-2" id="lib-picker-row" style="display:none">
+          <label class="form-label">Library Template</label>
+          <select class="form-control">
+            <option>Own Damage — Standard (Motor)</option>
+            <option>Personal Accident — Driver (Motor)</option>
+            <option>Fire & Allied Perils (Property)</option>
+            <option>Business Interruption — Standard (Property)</option>
+            <option>Truck Physical Damage (Trucking)</option>
+            <option>Motor Truck Cargo (Trucking)</option>
+            <option>Network Security & Privacy Liability (Cyber)</option>
+            <option>Cyber Incident Response (Cyber)</option>
+            <option>Statutory Benefits (Workers Compensation)</option>
+            <option>Employers Liability (Workers Compensation)</option>
+          </select>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label" for="ac-desc">Description</label>
+          <textarea id="ac-desc" class="form-control" rows="3" placeholder="Brief description of what this cover includes…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="executeAddCover()">Add Cover</button>
+    </div>
+  `);
+}
+
+function toggleLibPicker() {
+  setTimeout(() => {
+    const toggle = document.getElementById('ac-lib-toggle');
+    const row = document.getElementById('lib-picker-row');
+    if (row) row.style.display = toggle?.checked ? 'block' : 'none';
+  }, 0);
+}
+
+function executeAddCover() {
+  const name = document.getElementById('ac-name')?.value.trim();
+  const type = document.getElementById('ac-type')?.value;
+  if (!name || !type) { PS.actionResult('error','Required fields','Cover name and type are required.'); return; }
+  PS.closeModal();
+  PS.actionResult('success','Cover added',`"${name}" has been added. Configure it from the cover list.`);
+}
+
+/* ────────────────────────────────────────────────────────
+   REORDER MODAL
+──────────────────────────────────────────────────────── */
+function openReorderModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Reorder Covers</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--color-muted);margin-bottom:var(--space-4)">Drag and drop covers to reorder them. Order affects how they appear on policy documents and quote screens.</p>
+      <div style="display:flex;flex-direction:column;gap:var(--space-2)" id="reorder-list">
+        ${COVERS.map((c,i) => `
+        <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-panel);cursor:grab">
+          <svg width="16" height="16" viewBox="0 0 256 256" fill="none" style="color:var(--color-muted)"><path d="M108 60a16 16 0 1116-16 16 16 0 01-16 16zm40 0a16 16 0 1116-16 16 16 0 01-16 16zm-40 80a16 16 0 1116-16 16 16 0 01-16 16zm40 0a16 16 0 1116-16 16 16 0 01-16 16zm-40 80a16 16 0 1116-16 16 16 0 01-16 16zm40 0a16 16 0 1116-16 16 16 0 01-16 16z" fill="currentColor"/></svg>
+          <span style="font-size:13px;font-weight:500;flex:1">${c.name}</span>
+          <span class="avail-badge ${AVAIL_CSS[c.availability]}">${AVAIL_LABELS[c.availability]}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCoverOrder()">Save Order</button>
+    </div>
+  `, 'modal-sm');
+}
+
+/* ────────────────────────────────────────────────────────
+   COVER LIBRARY MODAL
+──────────────────────────────────────────────────────── */
+function openLibraryModal() {
+  const libraryCovers = [
+    { name:'Own Damage — Standard',      type:'First Party Property', lob:'Motor',    updated:'Aug 2026', usedIn:4 },
+    { name:'Personal Accident — Driver', type:'Benefit',              lob:'Motor',    updated:'Jun 2026', usedIn:3 },
+    { name:'Third Party Liability',      type:'Third Party Liability',lob:'Motor',    updated:'Aug 2026', usedIn:6 },
+    { name:'Fire & Allied Perils',       type:'First Party Property', lob:'Property', updated:'Jul 2026', usedIn:2 },
+    { name:'Building, Equipment & Stock — Mixed Valuation', type:'First Party Property', lob:'Property', updated:'Aug 2026', usedIn:3 },
+    { name:'Business Interruption',      type:'Consequential Loss',   lob:'Property', updated:'May 2026', usedIn:1 },
+    { name:'Truck Physical Damage',      type:'First Party Property', lob:'Trucking', updated:'Aug 2026', usedIn:5 },
+    { name:'Motor Truck Cargo',          type:'Cargo / Transit',      lob:'Trucking', updated:'Jul 2026', usedIn:4 },
+    { name:'Network Security & Privacy Liability', type:'Cyber Liability', lob:'Cyber', updated:'Aug 2026', usedIn:6 },
+    { name:'Cyber Incident Response',    type:'Service / Expense',    lob:'Cyber', updated:'Aug 2026', usedIn:5 },
+    { name:'Cyber Business Interruption',type:'Consequential Loss',   lob:'Cyber', updated:'Jun 2026', usedIn:3 },
+    { name:'Statutory Workers Compensation Benefits', type:'Statutory Benefit', lob:'Workers Compensation', updated:'Aug 2026', usedIn:4 },
+    { name:'Employers Liability',        type:'Employers Liability',  lob:'Workers Compensation', updated:'Jul 2026', usedIn:4 },
+    { name:'Accidental Death',           type:'Benefit',              lob:'Life',     updated:'Mar 2026', usedIn:2 }
+  ];
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Cover Library</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4)">
+        <div style="position:relative;flex:1"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-muted)"><svg width="13" height="13" viewBox="0 0 256 256" fill="none"><path d="M229.66 218.34l-50.07-50.07a88 88 0 10-11.31 11.31l50.06 50.07a8 8 0 0011.32-11.31zM40 112a72 72 0 1172 72 72.08 72.08 0 01-72-72z" fill="currentColor"/></svg></span>
+          <input type="search" id="cover-library-search" class="form-control" placeholder="Search library…" style="padding-left:30px;height:36px" oninput="filterCoverageLibrary()"></div>
+        <select id="cover-library-line" class="form-control" style="width:190px;height:36px" onchange="filterCoverageLibrary()">
+          <option>All Lines</option>${PS.data.productFamilies.map(family => `<option>${family}</option>`).join('')}
+        </select>
+        <select id="cover-library-type" class="form-control" style="width:180px;height:36px" onchange="filterCoverageLibrary()">
+          <option>All Types</option>${[...new Set(libraryCovers.map(item=>item.type))].map(type => `<option>${type}</option>`).join('')}
+        </select>
+      </div>
+      <table class="lib-table">
+        <thead><tr>
+          <th style="width:32px"><input type="checkbox" style="accent-color:var(--color-brand)"></th>
+          <th>Cover Name</th><th>Type</th><th>Line of Business</th><th>Last Updated</th><th class="text-center">Used In</th>
+        </tr></thead>
+        <tbody>
+          ${libraryCovers.map((l,i) => `
+          <tr data-library-name="${esc(l.name.toLowerCase())}" data-library-line="${esc(l.lob)}" data-library-type="${esc(l.type)}">
+            <td><input type="checkbox" id="lib-cb-${i}" style="accent-color:var(--color-brand)"></td>
+            <td style="font-weight:500">${l.name}</td>
+            <td style="color:var(--color-muted)">${l.type}</td>
+            <td><span class="family-badge">${l.lob}</span></td>
+            <td style="color:var(--color-muted)">${l.updated}</td>
+            <td class="text-center" style="color:var(--color-muted)">${l.usedIn} products</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:13px;color:var(--color-muted);margin-right:auto">Select covers to import as draft covers</span>
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="importSelectedLibraryItems()">Import Selected</button>
+    </div>
+  `, 'modal-lg');
+}
+
+function filterCoverageLibrary() {
+  const search = (document.getElementById('cover-library-search')?.value || '').toLowerCase();
+  const line = document.getElementById('cover-library-line')?.value || 'All Lines';
+  const type = document.getElementById('cover-library-type')?.value || 'All Types';
+  document.querySelectorAll('#active-modal-overlay tbody tr').forEach(row => {
+    const matches = (!search || row.dataset.libraryName.includes(search)) &&
+      (line === 'All Lines' || row.dataset.libraryLine === line) &&
+      (type === 'All Types' || row.dataset.libraryType === type);
+    row.hidden = !matches;
+  });
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

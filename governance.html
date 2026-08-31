@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Governance &amp; Approval — Product Studio | VeriDex</title>
+  <meta name="description" content="Centralize the maker-checker approval workflow across all products and versions.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Header specific ───────────────────────── */
+    .gov-toggle-wrap { display: flex; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 100px; padding: 2px; }
+    .gov-toggle-btn { padding: 4px 16px; font-size: 13px; font-weight: 500; border-radius: 100px; cursor: pointer; color: var(--color-muted); transition: all .2s; }
+    .gov-toggle-btn.active { background: #fff; color: var(--color-ink); box-shadow: var(--shadow-sm); font-weight: 600; }
+
+    /* ── Tabs ──────────────────────────────────── */
+    .tabs-nav { display: flex; gap: var(--space-5); border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-4); padding: 0 var(--space-5); }
+    .tab-btn { padding: var(--space-3) 0; font-size: 14px; font-weight: 500; color: var(--color-muted); border-bottom: 2px solid transparent; cursor: pointer; user-select: none; transition: color .2s, border-color .2s; }
+    .tab-btn:hover { color: var(--color-ink); }
+    .tab-btn.active { color: var(--color-brand); border-bottom-color: var(--color-brand); font-weight: 600; }
+    .tab-pane { display: none; padding: 0 var(--space-5) var(--space-6); }
+    .tab-pane.active { display: block; }
+
+    /* ── Filter Bar ────────────────────────────── */
+    .filter-bar { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+
+    /* ── Data Tables ───────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .data-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-high { background: #FEE2E2; color: var(--color-danger); }
+    .badge-normal { background: var(--color-surface); color: var(--color-muted); border: 1px solid var(--color-border); }
+
+    /* ── Review Drawer ─────────────────────────── */
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.4); backdrop-filter: blur(2px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .3s; }
+    .drawer { position: fixed; top: 0; right: -640px; width: 640px; height: 100vh; background: #fff; z-index: 1001; box-shadow: -4px 0 24px rgba(0,0,0,0.1); display: flex; flex-direction: column; transition: right .3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .drawer.open { right: 0; }
+    .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+    
+    .drawer-header { padding: var(--space-5); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .drawer-body { flex: 1; overflow-y: auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-6); }
+    .drawer-footer { padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border); background: #fff; display: flex; justify-content: space-between; align-items: center; }
+    
+    .drawer-title { font-size: 18px; font-weight: 700; color: var(--color-ink); margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-3); }
+    .drawer-meta { font-size: 13px; color: var(--color-muted); display: flex; align-items: center; gap: var(--space-3); }
+
+    /* ── Stepper ───────────────────────────────── */
+    .stepper { display: flex; align-items: center; justify-content: space-between; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; position: relative; }
+    .step:not(:last-child)::after { content: ''; position: absolute; top: 12px; right: -50%; width: 100%; height: 2px; background: var(--color-border); z-index: 1; }
+    .step-icon { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--color-muted); z-index: 2; }
+    .step.done .step-icon { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+    .step.active .step-icon { border-color: var(--color-brand); color: var(--color-brand); }
+    .step-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--color-ink); text-align: center; }
+    .step-user { font-size: 11px; color: var(--color-muted); text-align: center; }
+    .step.active .step-label { color: var(--color-brand); }
+    
+    .diff-box { font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.5; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); white-space: pre; overflow-x: auto; color: var(--color-ink); }
+    
+    .doc-link { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 13px; text-decoration: none; color: var(--color-brand); margin-bottom: 8px; transition: background .2s; }
+    .doc-link:hover { background: var(--color-surface); }
+
+    /* ── Modals ─────────────────────────────────── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal { background: #fff; border-radius: 12px; width: 520px; max-width: 92vw; box-shadow: 0 24px 80px rgba(0,0,0,.2); display: flex; flex-direction: column; }
+    .modal-header { padding: 24px 24px 16px; border-bottom: 1px solid var(--color-border); }
+    .modal-title { font-size: 18px; font-weight: 700; color: var(--color-ink); margin-bottom: 4px; }
+    .modal-desc { font-size: 13px; color: var(--color-muted); line-height: 1.5; }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--color-border); display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-warning { background: #FEF9C3; border: 1px solid #FDE68A; border-radius: 6px; padding: 12px 14px; font-size: 12px; color: #92400E; line-height: 1.5; }
+    .modal-danger { background: #FEE2E2; border: 1px solid #FCA5A5; border-radius: 6px; padding: 12px 14px; font-size: 12px; color: #991B1B; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    
+    <div class="page-header" style="padding-left:var(--space-5);padding-right:var(--space-5)">
+      <div class="page-header-left">
+        <h1 class="page-title">Governance & Approval</h1>
+        <p class="page-subtitle">1 item pending your review as Pricing Actuary</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-icon" onclick="document.getElementById('notif-modal').classList.add('open')" aria-label="Notification preferences"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M128 72a56 56 0 1056 56 56.06 56.06 0 00-56-56zm0 96a40 40 0 1140-40 40 40 0 01-40 40zm103.54-75.14l-21.75-5.83a88.66 88.66 0 00-8-19.29l11.45-19.82a8 8 0 00-1.85-10.23l-22.62-22.62a8 8 0 00-10.23-1.85l-19.82 11.45a88.66 88.66 0 00-19.29-8l-5.83-21.75A8 8 0 00128 32h-32a8 8 0 00-7.75 6.04l-5.83 21.75a88.66 88.66 0 00-19.29 8l-19.82-11.45a8 8 0 00-10.23 1.85L10.46 81.8a8 8 0 00-1.85 10.23l11.45 19.82a88.66 88.66 0 00-8 19.29l-21.75 5.83A8 8 0 0024 144v32a8 8 0 007.75 6.04l21.75 5.83a88.66 88.66 0 008 19.29l-11.45 19.82a8 8 0 001.85 10.23l22.62 22.62a8 8 0 0010.23 1.85l19.82-11.45a88.66 88.66 0 0019.29 8l5.83 21.75A8 8 0 00128 256h32a8 8 0 007.75-6.04l5.83-21.75a88.66 88.66 0 0019.29-8l19.82 11.45a8 8 0 0010.23-1.85l22.62-22.62a8 8 0 001.85-10.23l-11.45-19.82a88.66 88.66 0 008-19.29l21.75-5.83A8 8 0 00232 144v-32a8 8 0 00-7.75-6.04z" fill="currentColor"/></svg></button>
+        <div class="gov-toggle-wrap">
+          <div class="gov-toggle-btn active">My Queue</div>
+          <div class="gov-toggle-btn">All Items</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs-nav">
+      <div class="tab-btn active" onclick="switchTab('pending', this)">Pending Review</div>
+      <div class="tab-btn" onclick="switchTab('approved', this)">Approved</div>
+      <div class="tab-btn" onclick="switchTab('scheduled', this)">Scheduled</div>
+      <div class="tab-btn" onclick="switchTab('published', this)">Published</div>
+      <div class="tab-btn" onclick="switchTab('all', this)">All</div>
+    </div>
+
+    <!-- TAB: Pending Review -->
+    <div id="tab-pending" class="tab-pane active">
+      <div class="filter-bar">
+        <select class="form-control" style="width:190px"><option>Product Family: All</option><option>Motor</option><option>Trucking</option><option>Cyber</option><option>Property</option><option>Workers Compensation</option><option>Health</option><option>Marine</option><option>Travel</option><option>Life</option><option>Liability</option></select>
+        <select class="form-control" style="width:160px"><option>Gate: All</option><option>Product Owner</option><option selected>Actuarial</option></select>
+        <select class="form-control" style="width:160px"><option>Assigned To: Me</option><option>All Reviewers</option></select>
+        <select class="form-control" style="width:160px"><option>Priority: All</option><option>High</option><option>Normal</option></select>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Version</th>
+            <th>Submitted</th>
+            <th>Active Gate</th>
+            <th>Gate Progress</th>
+            <th>Priority</th>
+            <th>Days</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SME Property All Risks</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.06-RC1</td>
+            <td style="color:var(--color-muted)">19-Aug-2026 by Anika Sharma</td>
+            <td><strong>Actuarial/Pricing</strong><br><span style="font-size:11px;color:var(--color-muted)">Assigned: Rajan Mehta</span></td>
+            <td>2/5</td>
+            <td><span class="status-badge badge-high">HIGH</span></td>
+            <td>3</td>
+            <td style="text-align:right"><button class="btn btn-primary btn-sm" onclick="openDrawer()">Review</button></td>
+          </tr>
+          <tr>
+            <td><strong>Group Health — Corporate Plan</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.05</td>
+            <td style="color:var(--color-muted)">18-Aug-2026 by Anika Sharma</td>
+            <td><strong>Ops/Tech</strong><br><span style="font-size:11px;color:var(--color-muted)">Assigned: Marcus Lee</span></td>
+            <td>4/5</td>
+            <td><span class="status-badge badge-normal">NORMAL</span></td>
+            <td>4</td>
+            <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer()">View</button></td>
+          </tr>
+          <tr>
+            <td><strong>Employers Liability</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.03-RC2</td>
+            <td style="color:var(--color-muted)">15-Aug-2026 by Anika Sharma</td>
+            <td><strong>Compliance/Legal</strong><br><span style="font-size:11px;color:var(--color-muted)">Assigned: David Okonkwo</span></td>
+            <td>3/5</td>
+            <td><span class="status-badge badge-normal">NORMAL</span></td>
+            <td>7</td>
+            <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer()">View</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Approved -->
+    <div id="tab-approved" class="tab-pane">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product</th><th>Version</th><th>Final Gate By</th><th>Simulation Status</th><th>Scheduled Publication</th><th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Group Health — Corporate Plan</strong><br><span style="font-size:11px;color:var(--color-muted)">PRD-004</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.05</td>
+            <td style="color:var(--color-muted)">Marcus Lee, 21-Aug-2026</td>
+            <td><span style="color:var(--color-success);font-weight:600">✓ Passed</span></td>
+            <td style="color:var(--color-muted)">Not Scheduled</td>
+            <td style="text-align:right">
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn btn-secondary btn-sm" onclick="openScheduleModal()">Schedule Publication</button>
+                <button class="btn btn-primary btn-sm" style="background:var(--color-success);border-color:var(--color-success)" onclick="openPublishNowModal()">Publish Now</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Scheduled -->
+    <div id="tab-scheduled" class="tab-pane">
+      <div style="padding:60px;text-align:center;color:var(--color-muted);background:var(--color-surface);border:1px dashed var(--color-border);border-radius:var(--radius-md)">
+        <div style="font-size:24px;margin-bottom:8px">⏱️</div>
+        No versions are currently scheduled for publication.
+      </div>
+    </div>
+
+    <!-- TAB: Published -->
+    <div id="tab-published" class="tab-pane">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Version</th>
+            <th>Published On</th>
+            <th>Published By</th>
+            <th>Effective Period</th>
+            <th>Runtime API Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a href="product-detail.html?id=PRD-001" style="color:inherit;text-decoration:none"><strong>Private Car Comprehensive</strong></a></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.04</td>
+            <td>01-Apr-2026</td>
+            <td style="color:var(--color-muted)">Priya Varghese</td>
+            <td>01-Apr → 30-Sep-2026</td>
+            <td><span class="status-badge badge-normal" style="color:var(--color-success);background:#DCFCE7;border:none">✓ ACTIVE</span></td>
+          </tr>
+          <tr>
+            <td><strong>Motorcycle Comprehensive</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.03</td>
+            <td>01-Mar-2026</td>
+            <td style="color:var(--color-muted)">Priya Varghese</td>
+            <td>01-Mar → 30-Sep-2026</td>
+            <td><span class="status-badge badge-normal" style="color:var(--color-success);background:#DCFCE7;border:none">✓ ACTIVE</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- TAB: All -->
+    <div id="tab-all" class="tab-pane">
+      <table class="data-table">
+        <thead>
+          <tr><th>Product</th><th>Version</th><th>State</th><th>Submitted</th><th>Gate Progress</th><th>Priority</th><th>Days</th><th style="text-align:right">Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SME Property All Risks</strong></td><td style="font-family:'IBM Plex Mono',monospace">2026.06-RC1</td>
+            <td><span class="status-badge badge-normal" style="background:#EDE9FE;color:#7C3AED">IN REVIEW</span></td>
+            <td style="color:var(--color-muted)">19-Aug-2026</td><td>2/5</td><td><span class="status-badge badge-high">HIGH</span></td><td>3</td>
+            <td style="text-align:right"><button class="btn btn-primary btn-sm" onclick="openDrawer()">Review</button></td>
+          </tr>
+          <tr>
+            <td><strong>Group Health — Corporate Plan</strong></td><td style="font-family:'IBM Plex Mono',monospace">2026.05</td>
+            <td><span class="status-badge" style="background:#DCFCE7;color:var(--color-success)">APPROVED</span></td>
+            <td style="color:var(--color-muted)">18-Aug-2026</td><td>5/5</td><td><span class="status-badge badge-normal">NORMAL</span></td><td>4</td>
+            <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openPublishNowModal()">Publish Now</button></td>
+          </tr>
+          <tr>
+            <td><strong>Employers Liability</strong></td><td style="font-family:'IBM Plex Mono',monospace">2026.03-RC2</td>
+            <td><span class="status-badge badge-normal" style="background:#EDE9FE;color:#7C3AED">IN REVIEW</span></td>
+            <td style="color:var(--color-muted)">15-Aug-2026</td><td>3/5</td><td><span class="status-badge badge-normal">NORMAL</span></td><td>7</td>
+            <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer()">View</button></td>
+          </tr>
+          <tr>
+            <td><a href="product-detail.html?id=PRD-001" style="color:inherit;text-decoration:none"><strong>Private Car Comprehensive</strong></a></td><td style="font-family:'IBM Plex Mono',monospace">2026.04</td>
+            <td><span class="status-badge" style="background:#DCFCE7;color:var(--color-success)">PUBLISHED</span></td>
+            <td style="color:var(--color-muted)">15-Mar-2026</td><td>5/5</td><td><span class="status-badge badge-normal">NORMAL</span></td><td>—</td>
+            <td style="text-align:right"><a href="product-detail.html?id=PRD-001" class="btn btn-ghost btn-sm">View Product</a></td>
+          </tr>
+          <tr>
+            <td><strong>Motorcycle Comprehensive</strong></td><td style="font-family:'IBM Plex Mono',monospace">2026.03</td>
+            <td><span class="status-badge" style="background:#DCFCE7;color:var(--color-success)">PUBLISHED</span></td>
+            <td style="color:var(--color-muted)">01-Feb-2026</td><td>5/5</td><td><span class="status-badge badge-normal">NORMAL</span></td><td>—</td>
+            <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer()">View</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<!-- REVIEW DRAWER -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="review-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title">
+      SME Property All Risks — <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--color-muted)">v2026.06-RC1</span>
+      <span class="badge badge-draft" style="font-size:10px">PENDING REVIEW</span>
+    </div>
+    <div class="drawer-meta">
+      Submitted 19-Aug-2026 by Anika Sharma · Gate: <strong>Actuarial/Pricing</strong>
+    </div>
+  </div>
+  
+  <div class="drawer-body">
+    
+    <div>
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px">Approval Gate Progress</h3>
+      <div class="stepper">
+        <div class="step done"><div class="step-icon">✓</div><div class="step-label">Product Owner</div><div class="step-user">Anika Sharma<br>15-Aug-2026</div></div>
+        <div class="step active"><div class="step-icon">⟳</div><div class="step-label">Actuarial ←YOU</div><div class="step-user">PENDING</div></div>
+        <div class="step"><div class="step-icon">○</div><div class="step-label">Underwriting</div><div class="step-user">Sunita Pillai</div></div>
+        <div class="step"><div class="step-icon">○</div><div class="step-label">Compliance</div><div class="step-user">David Okonkwo</div></div>
+        <div class="step"><div class="step-icon">○</div><div class="step-label">Ops/Tech</div><div class="step-user">Marcus Lee</div></div>
+      </div>
+    </div>
+    
+    <div>
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px">What Changed (Version Diff Summary)</h3>
+      <div class="diff-box">Changes from v2026.05 → v2026.06-RC1:
+
+Rating Studio
+├── Base Rate: $420 → $445 (<span style="color:var(--color-danger)">+6.0%</span>)
+├── Territory Factor Zone A: 1.20 → 1.25 (<span style="color:var(--color-danger)">+4.2%</span>)
+└── Added new factor: Building Age Factor (new)
+
+Coverage Studio
+└── Increased Flood Cover sub-limit: $50,000 → $75,000
+
+Underwriting Studio
+└── New Decline Rule: UW-DCL-009 (Flood Zone 4 Exclusion)</div>
+      <a href="#" style="font-size:12px;font-weight:600;color:var(--color-brand);margin-top:8px;display:inline-block;text-decoration:none">View Full Diff →</a>
+    </div>
+
+    <div>
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px">Simulation Results Summary</h3>
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-4);font-size:13px;line-height:1.5">
+        <div style="font-weight:600;color:var(--color-success);margin-bottom:8px">Simulation Status: ✓ All 14 Tests Passed</div>
+        <div style="color:var(--color-muted);margin-bottom:16px;font-size:11px">Last Run: 20-Aug-2026 11:22 by Rajan Mehta</div>
+        <div style="font-weight:600">Premium Movement (vs v2026.05):</div>
+        <ul style="margin:4px 0 16px 20px;padding:0">
+          <li>Average increase: <span style="color:var(--color-danger);font-weight:600">+6.1%</span></li>
+          <li>Max single-risk increase: <span style="color:var(--color-danger);font-weight:600">+12.4%</span> (Flood Zone 3, high SI)</li>
+          <li>Segments affected: All (rate increase, not segment-specific)</li>
+        </ul>
+        <div style="font-style:italic;color:var(--color-muted)">No UW decision changes detected.</div>
+      </div>
+    </div>
+    
+    <div>
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px">Supporting Documents</h3>
+      <a href="#" class="doc-link">📄 Actuarial Pricing Memorandum — 2026.06 Rate Review.pdf</a>
+      <a href="#" class="doc-link">📄 UW Appetite Statement 2026 — Signed.pdf</a>
+      <a href="#" class="doc-link">📄 Product Change Request Form — SME.docx</a>
+    </div>
+
+    <div style="background:#F8FAFF;border:1px solid #C4B5FD;border-radius:var(--radius-md);padding:var(--space-5)">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:#6D28D9">Review Decision</h3>
+      <div class="form-group">
+        <label class="form-label" style="color:#6D28D9">Comments (required for rejection/changes)</label>
+        <textarea class="form-control" style="height:80px" placeholder="Enter your review comments here..."></textarea>
+      </div>
+      <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4)">
+        <button class="btn btn-primary" style="background:var(--color-success);border-color:var(--color-success)" onclick="closeDrawer();PS.actionResult('success','Approved','Actuarial gate approved. Moved to Underwriting.')">✓ Approve</button>
+        <button class="btn btn-secondary">→ Request Changes</button>
+        <button class="btn btn-secondary" style="color:var(--color-danger);border-color:var(--color-danger)">✕ Reject</button>
+      </div>
+    </div>
+
+  </div>
+  
+  <div class="drawer-footer">
+    <button class="btn btn-ghost" onclick="closeDrawer()">Close</button>
+    <a href="#" style="font-size:13px;font-weight:600;color:var(--color-brand);text-decoration:none">View Full Product →</a>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCHEDULE PUBLICATION MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="schedule-modal" onclick="closeScheduleModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Schedule Publication</div>
+      <div class="modal-desc">Group Health — Corporate Plan · v2026.05 · All 5 approval gates complete.</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Publication Date &amp; Time <span style="color:var(--color-danger)">*</span></label>
+        <input type="datetime-local" class="form-control" id="schedule-datetime" value="2026-09-01T00:00">
+        <div style="font-size:11px;color:var(--color-muted);margin-top:4px">Product will become available to permitted channels from this date/time (IST).</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Effective From Date</label>
+        <input type="date" class="form-control" value="2026-09-01" style="max-width:200px">
+        <div style="font-size:11px;color:var(--color-muted);margin-top:4px">Pre-filled from product version configuration. Editable if needed.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notify on Publication</label>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked> Anika Sharma (Product Owner)</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked> Rajan Mehta (Pricing Actuary)</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked> Sunita Pillai (Underwriting Manager)</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox"> All Channel Managers</label>
+        </div>
+      </div>
+      <div class="modal-warning">⚠ Ensure the Effective From date in the API response is also updated in your Policy Administration System before this publication date.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeScheduleModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSchedule()">Confirm Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PUBLISH NOW MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="publish-modal" onclick="closePublishModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--color-danger)">Publish Now — Confirm</div>
+      <div class="modal-desc">Group Health — Corporate Plan · v2026.05</div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-danger">
+        ⚠ <strong>This action is irreversible.</strong> The version will become immediately available to all permitted distribution channels. The previous published version will be superseded.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type the version label to confirm: <code style="font-size:12px;background:var(--color-surface);padding:2px 6px;border-radius:4px">2026.05</code></label>
+        <input type="text" class="form-control" id="publish-confirm-input" placeholder="Type version label here…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePublishModal()">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--color-danger);border-color:var(--color-danger)" onclick="confirmPublish()">Publish Now — Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     NOTIFICATION SETTINGS MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="notif-modal" onclick="document.getElementById('notif-modal').classList.remove('open')">
+  <div class="modal" onclick="event.stopPropagation()" style="width:560px">
+    <div class="modal-header">
+      <div class="modal-title">Notification Preferences</div>
+      <div class="modal-desc">Configure which governance events trigger notifications for your role (Pricing Actuary).</div>
+    </div>
+    <div class="modal-body">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead><tr><th style="text-align:left;padding:8px 0;border-bottom:1px solid var(--color-border)">Event</th><th style="text-align:center;border-bottom:1px solid var(--color-border)">Email</th><th style="text-align:center;border-bottom:1px solid var(--color-border)">In-App</th><th style="text-align:center;border-bottom:1px solid var(--color-border)">Slack</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:10px 0;border-bottom:1px solid var(--color-border)">Submitted for Review (your gate)</td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox"></td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid var(--color-border)">Approved by all gates</td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox"></td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid var(--color-border)">Rejected (if you submitted)</td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox"></td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid var(--color-border)">Published</td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox"></td></tr>
+          <tr><td style="padding:10px 0">Test failure blocking publication</td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox" checked></td><td style="text-align:center"><input type="checkbox"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('notif-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary" onclick="document.getElementById('notif-modal').classList.remove('open');PS.actionResult('success','Saved','Notification preferences updated.')">Save Preferences</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('governance', [
+    { label:'Governance & Approval Workflow', href:'#' }
+  ]);
+  // Settings gear opens notification modal
+  document.querySelector('.btn-icon').addEventListener('click', () => {
+    document.getElementById('notif-modal').classList.add('open');
+  });
+  // My Queue / All Items toggle
+  document.querySelectorAll('.gov-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.gov-toggle-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+});
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tab-${id}`).classList.add('active');
+}
+
+function openDrawer() {
+  document.getElementById('review-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('review-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// Schedule modal
+function openScheduleModal() { document.getElementById('schedule-modal').classList.add('open'); }
+function closeScheduleModal(e) {
+  if (!e || e.target === document.getElementById('schedule-modal'))
+    document.getElementById('schedule-modal').classList.remove('open');
+}
+function confirmSchedule() {
+  const dt = document.getElementById('schedule-datetime').value;
+  closeScheduleModal();
+  PS.actionResult('success','Scheduled',`Group Health v2026.05 scheduled for publication on ${dt}.`);
+}
+
+// Publish Now modal
+function openPublishNowModal() {
+  document.getElementById('publish-confirm-input').value = '';
+  document.getElementById('publish-modal').classList.add('open');
+}
+function closePublishModal(e) {
+  if (!e || e.target === document.getElementById('publish-modal'))
+    document.getElementById('publish-modal').classList.remove('open');
+}
+function confirmPublish() {
+  const typed = document.getElementById('publish-confirm-input').value.trim();
+  if (typed !== '2026.05') {
+    PS.actionResult('danger','Version Mismatch','Type exactly "2026.05" to confirm publication.');
+    return;
+  }
+  closePublishModal();
+  PS.actionResult('success','Published','Group Health — Corporate Plan v2026.05 is now live across all permitted channels.');
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

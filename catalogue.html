@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Catalogue — Product Studio | VeriDex</title>
+  <meta name="description" content="Browse and manage all insurance products — search, filter, and navigate to any product version.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Catalogue-specific styles ─────────────────────── */
+    .filter-bar {
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .filter-search {
+      position: relative;
+      flex: 1;
+      min-width: 220px;
+    }
+    .filter-search input {
+      width: 100%;
+      height: 36px;
+      padding: 0 var(--space-3) 0 36px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      background: var(--color-panel);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .filter-search input:focus {
+      outline: none;
+      border-color: var(--color-brand);
+      box-shadow: 0 0 0 3px rgba(26,79,138,.12);
+    }
+    .filter-search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-muted);
+      pointer-events: none;
+    }
+    .chips-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      min-height: 28px;
+      margin-bottom: var(--space-4);
+    }
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 26px;
+      padding: 0 10px;
+      background: var(--color-brand-light);
+      color: var(--color-brand);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .filter-chip-remove {
+      cursor: pointer;
+      opacity: .7;
+      display: flex;
+      align-items: center;
+    }
+    .filter-chip-remove:hover { opacity: 1; }
+
+    .view-sort-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-5);
+    }
+    .view-toggle {
+      display: flex;
+      gap: 2px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 2px;
+    }
+    .view-toggle-btn {
+      width: 32px;
+      height: 30px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: var(--color-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .1s, color .1s;
+    }
+    .view-toggle-btn.active {
+      background: var(--color-panel);
+      color: var(--color-brand);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Row expander */
+    .expand-chevron {
+      transition: transform .2s;
+      color: var(--color-muted);
+    }
+    .expand-chevron.open { transform: rotate(90deg); }
+    .expand-row td {
+      padding: 0 !important;
+      height: auto !important;
+      background: var(--color-surface);
+    }
+    .expand-row-content {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .2s ease;
+    }
+    .expand-row-content.open { max-height: 300px; }
+    .version-history {
+      padding: 12px 24px 12px 52px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .version-history-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      transition: background .05s;
+    }
+    .version-history-row:hover { background: var(--color-border); }
+    .version-history-row .mono { font-family:'IBM Plex Mono',monospace; font-size:12px; min-width:100px; }
+    .version-tree-icon { color: var(--color-muted); font-size: 12px; width:16px; }
+
+    /* Card grid */
+    .product-card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-5);
+    }
+    @media (min-width: 1440px) {
+      .product-card-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .product-card {
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: box-shadow .15s;
+      border-left: 4px solid;
+    }
+    .product-card:hover { box-shadow: var(--shadow-md); }
+    .product-card-top {
+      padding: var(--space-4) var(--space-5);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .product-card-body { padding: var(--space-4) var(--space-5); flex: 1; }
+    .product-card-name { font-size: 15px; font-weight: 600; color: var(--color-ink); margin-bottom: 4px; }
+    .product-card-id { font-family:'IBM Plex Mono',monospace; font-size: 11px; color: var(--color-muted); }
+    .product-card-meta { margin-top: var(--space-3); }
+    .product-card-meta-row {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--color-muted);
+      margin-bottom: 4px;
+    }
+    .product-card-meta-label { font-weight: 500; min-width: 72px; }
+    .product-card-footer {
+      padding: var(--space-3) var(--space-5);
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    /* Family badge (plain outline pill) */
+    .family-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 10px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 100px;
+      border: 1px solid var(--color-border);
+      color: var(--color-muted);
+      background: var(--color-surface);
+    }
+
+    /* Stepper */
+    .stepper {
+      display: flex;
+      align-items: center;
+      margin-bottom: var(--space-8);
+    }
+    .stepper-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+    .stepper-circle {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+      border: 2px solid var(--color-border);
+      color: var(--color-muted);
+      background: var(--color-panel);
+      z-index: 1;
+    }
+    .stepper-step.done .stepper-circle { background: var(--color-success); border-color: var(--color-success); color:#fff; }
+    .stepper-step.active .stepper-circle { background: var(--color-brand); border-color: var(--color-brand); color:#fff; }
+    .stepper-label { font-size: 12px; font-weight: 500; color: var(--color-muted); white-space: nowrap; }
+    .stepper-step.active .stepper-label { color: var(--color-brand); }
+    .stepper-step.done .stepper-label { color: var(--color-success); }
+    .stepper-connector {
+      flex: 1;
+      height: 2px;
+      background: var(--color-border);
+      margin: 0 8px;
+      margin-bottom: 22px;
+    }
+    .stepper-connector.done { background: var(--color-success); }
+
+    /* Wizard step content */
+    .wizard-step { display: none; }
+    .wizard-step.active { display: block; }
+
+    /* Multi-select chips inside form */
+    .multi-select-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-panel);
+      min-height: 38px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .multi-select-chips:focus-within { border-color: var(--color-brand); box-shadow: 0 0 0 3px rgba(26,79,138,.12); }
+    .ms-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; background: var(--color-brand-light);
+      color: var(--color-brand); border-radius: 100px; font-size: 12px; font-weight:500;
+    }
+    .ms-chip-remove { cursor: pointer; opacity:.7; }
+    .ms-chip-remove:hover { opacity: 1; }
+
+    /* Search highlight */
+    mark.search-hl { background: var(--color-brand-light); color: var(--color-brand); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div class="shell" id="app-shell">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+
+  <!-- Sidenav -->
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+
+  <!-- Main Content -->
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Product Catalogue</h1>
+          <p class="page-subtitle" id="catalogue-subtitle">14 products across 6 product families</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="handleExport()" id="export-btn">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 152v56a16 16 0 01-16 16H48a16 16 0 01-16-16v-56a8 8 0 0116 0v56h160v-56a8 8 0 0116 0zm-101.66 5.66a8 8 0 0011.32 0l40-40a8 8 0 00-11.32-11.32L136 132.69V40a8 8 0 00-16 0v92.69l-26.34-26.35a8 8 0 00-11.32 11.32z" fill="currentColor"/></svg>
+            Export
+          </button>
+          <button class="btn btn-secondary" onclick="handleImport()" id="import-btn">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 152v56a16 16 0 01-16 16H48a16 16 0 01-16-16v-56a8 8 0 0116 0v56h160v-56a8 8 0 0116 0zm-90.34-98.34a8 8 0 00-11.32 0l-40 40a8 8 0 0011.32 11.32L120 78.63V168a8 8 0 0016 0V78.63l26.34 26.35a8 8 0 0011.32-11.32z" fill="currentColor"/></svg>
+            Import
+          </button>
+          <button class="btn btn-primary" onclick="openNewProductWizard()" id="new-product-btn">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+            New Product
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="card mb-6" id="filter-area" style="padding: var(--space-5) var(--space-6);">
+        <div class="filter-bar">
+          <div class="filter-search">
+            <span class="filter-search-icon">
+              <svg width="14" height="14" viewBox="0 0 256 256" fill="none"><path d="M229.66 218.34l-50.07-50.07a88 88 0 10-11.31 11.31l50.06 50.07a8 8 0 0011.32-11.31zM40 112a72 72 0 1172 72 72.08 72.08 0 01-72-72z" fill="currentColor"/></svg>
+            </span>
+            <input type="search" id="cat-search" placeholder="Search product name, ID, or description…" oninput="handleSearch(this.value)" aria-label="Search products">
+          </div>
+
+          <!-- Family filter -->
+          <div class="dropdown" id="family-dd">
+            <button class="btn btn-secondary" onclick="toggleDD('family-menu')" id="family-filter-btn" aria-haspopup="listbox">
+              Family
+              <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M213.66 101.66l-80 80a8 8 0 01-11.32 0l-80-80a8 8 0 0111.32-11.32L128 164.69l74.34-74.35a8 8 0 0111.32 11.32z" fill="currentColor"/></svg>
+            </button>
+            <div class="dropdown-menu hidden" id="family-menu">
+              <div style="padding:8px 16px 4px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--color-muted)">Insurance Family</div>
+              <div class="dropdown-sep"></div>
+              <div id="family-options"></div>
+            </div>
+          </div>
+
+          <!-- Status filter -->
+          <div class="dropdown" id="status-dd">
+            <button class="btn btn-secondary" onclick="toggleDD('status-menu')" id="status-filter-btn" aria-haspopup="listbox">
+              Status
+              <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M213.66 101.66l-80 80a8 8 0 01-11.32 0l-80-80a8 8 0 0111.32-11.32L128 164.69l74.34-74.35a8 8 0 0111.32 11.32z" fill="currentColor"/></svg>
+            </button>
+            <div class="dropdown-menu hidden" id="status-menu">
+              <div style="padding:8px 16px 4px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--color-muted)">Lifecycle Status</div>
+              <div class="dropdown-sep"></div>
+              <div id="status-options"></div>
+            </div>
+          </div>
+
+          <!-- Owner filter -->
+          <div class="dropdown" id="owner-dd">
+            <button class="btn btn-secondary" onclick="toggleDD('owner-menu')" id="owner-filter-btn" aria-haspopup="listbox">
+              Owner
+              <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M213.66 101.66l-80 80a8 8 0 01-11.32 0l-80-80a8 8 0 0111.32-11.32L128 164.69l74.34-74.35a8 8 0 0111.32 11.32z" fill="currentColor"/></svg>
+            </button>
+            <div class="dropdown-menu hidden" id="owner-menu">
+              <div class="dropdown-item" onclick="setOwner(null)">All Owners</div>
+              <div class="dropdown-sep"></div>
+              <div class="dropdown-item" onclick="setOwner('Anika Sharma')">Anika Sharma</div>
+              <div class="dropdown-item" onclick="setOwner('Rajan Mehta')">Rajan Mehta</div>
+              <div class="dropdown-item" onclick="setOwner('Sunita Pillai')">Sunita Pillai</div>
+              <div class="dropdown-item" onclick="setOwner('Priya Varghese')">Priya Varghese</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active filter chips -->
+        <div class="chips-row" id="filter-chips" style="display:none">
+          <span style="font-size:12px;color:var(--color-muted);font-weight:500">Active filters:</span>
+          <div id="chips-container" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"></div>
+          <button class="btn btn-ghost btn-sm" onclick="clearAllFilters()" style="margin-left:auto;font-size:12px;color:var(--color-muted)">Clear All</button>
+        </div>
+      </div>
+
+      <!-- View Toggle + Sort -->
+      <div class="view-sort-bar">
+        <div style="display:flex;align-items:center;gap:var(--space-4)">
+          <div class="view-toggle" role="group" aria-label="View mode">
+            <button class="view-toggle-btn active" id="list-view-btn" onclick="setView('list')" aria-label="List view" aria-pressed="true" title="List view">
+              <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8H40a8 8 0 010-16h176a8 8 0 018 8zm-8-72H40a8 8 0 000 16h176a8 8 0 000-16zm0 128H40a8 8 0 000 16h176a8 8 0 000-16z" fill="currentColor"/></svg>
+            </button>
+            <button class="view-toggle-btn" id="card-view-btn" onclick="setView('card')" aria-label="Card view" aria-pressed="false" title="Card view">
+              <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M216 48H40a16 16 0 00-16 16v128a16 16 0 0016 16h176a16 16 0 0016-16V64a16 16 0 00-16-16zm-108 16v128H40V64zm92 128h-76V64h76z" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <span id="result-count" style="font-size:13px;color:var(--color-muted)">Showing 14 products</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-3)">
+          <span style="font-size:13px;color:var(--color-muted)">Sort by:</span>
+          <div class="dropdown">
+            <button class="btn btn-secondary btn-sm" onclick="toggleDD('sort-menu')" id="sort-btn">
+              <span id="sort-label">Last Modified</span>
+              <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M213.66 101.66l-80 80a8 8 0 01-11.32 0l-80-80a8 8 0 0111.32-11.32L128 164.69l74.34-74.35a8 8 0 0111.32 11.32z" fill="currentColor"/></svg>
+            </button>
+            <div class="dropdown-menu hidden" id="sort-menu">
+              <div class="dropdown-item" onclick="setSort('lastModified','Last Modified')">Last Modified</div>
+              <div class="dropdown-item" onclick="setSort('name','Product Name A–Z')">Product Name A–Z</div>
+              <div class="dropdown-item" onclick="setSort('status','Status')">Status</div>
+              <div class="dropdown-item" onclick="setSort('family','Family')">Family</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- List View -->
+      <div id="list-view-container">
+        <div class="card">
+          <div class="table-wrap">
+            <table id="catalogue-table" aria-label="Product catalogue">
+              <thead>
+                <tr>
+                  <th style="width:24px"></th>
+                  <th>Product Name</th>
+                  <th>Family</th>
+                  <th>Active Version</th>
+                  <th class="text-center">Status</th>
+                  <th>Effective Period</th>
+                  <th>Owner</th>
+                  <th>Last Modified</th>
+                  <th style="width:140px">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="catalogue-body"></tbody>
+            </table>
+          </div>
+          <div class="card-footer">
+            <div class="pagination" id="cat-pagination">
+              <span class="pagination-info" id="cat-page-info">Showing 1–14 of 14</span>
+              <button class="page-btn" disabled>‹</button>
+              <button class="page-btn active">1</button>
+              <button class="page-btn" disabled>›</button>
+            </div>
+            <select class="form-control" style="height:30px;width:110px;font-size:13px" aria-label="Items per page">
+              <option>25 / page</option><option>50 / page</option><option>100 / page</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card View -->
+      <div id="card-view-container" class="hidden">
+        <div class="product-card-grid" id="product-card-grid"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-5)" class="card" style="padding:12px 24px">
+          <div class="pagination" style="padding:12px 24px">
+            <span class="pagination-info">Showing 1–14 of 14</span>
+            <button class="page-btn" disabled>‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn" disabled>›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state (hidden by default) -->
+      <div id="empty-state" class="card hidden">
+        <div class="empty-state">
+          <svg class="empty-state-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="20" width="80" height="80" rx="8" stroke="currentColor" stroke-width="4"/>
+            <line x1="36" y1="48" x2="84" y2="48" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+            <line x1="36" y1="60" x2="84" y2="60" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+            <line x1="36" y1="72" x2="66" y2="72" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          <div class="empty-state-title">No products match your filters</div>
+          <div class="empty-state-desc">Try adjusting your search or filter criteria to find what you're looking for.</div>
+          <button class="btn btn-secondary" onclick="clearAllFilters()">Clear All Filters</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="responsive-warning" role="status">Insurance Product Studio is optimized for desktop screens (1280px and wider).</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+/* ── Extended data ────────────────────────────────────────── */
+const FULL_PRODUCTS = [
+  { id:'PRD-001', name:'Private Car Comprehensive',     family:'Motor',     version:'2026.04',       status:'published',  effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026', owner:'Anika Sharma',  lastModified:'21-Aug-2026', sortOrder:0 },
+  { id:'PRD-002', name:'Private Car Third Party Only',  family:'Motor',     version:'2026.07-DRAFT', status:'draft',      effectiveFrom:null,          effectiveTo:null,          owner:'Anika Sharma',  lastModified:'22-Aug-2026', sortOrder:1 },
+  { id:'PRD-003', name:'SME Property All Risks',        family:'Property',  version:'2026.06-RC1',   status:'review',     effectiveFrom:null,          effectiveTo:null,          owner:'Anika Sharma',  lastModified:'20-Aug-2026', sortOrder:2 },
+  { id:'PRD-004', name:'Group Health — Corporate Plan', family:'Health',    version:'2026.05',       status:'approved',   effectiveFrom:null,          effectiveTo:null,          owner:'Rajan Mehta',   lastModified:'21-Aug-2026', sortOrder:3 },
+  { id:'PRD-005', name:'Marine Cargo Open Cover',       family:'Marine',    version:'2025.12',       status:'superseded', effectiveFrom:'01-Jan-2025', effectiveTo:'31-Dec-2025', owner:'Priya Varghese',lastModified:'01-Jan-2026', sortOrder:4 },
+  { id:'PRD-006', name:'Travel Worldwide Annual',       family:'Travel',    version:'2024.01',       status:'retired',    effectiveFrom:'01-Jan-2024', effectiveTo:'31-Dec-2024', owner:'Priya Varghese',lastModified:'01-Jan-2025', sortOrder:5 },
+  { id:'PRD-007', name:'Motorcycle Comprehensive',      family:'Motor',     version:'2026.03',       status:'published',  effectiveFrom:'01-Mar-2026', effectiveTo:'28-Feb-2027', owner:'Anika Sharma',  lastModified:'15-Aug-2026', sortOrder:6 },
+  { id:'PRD-008', name:'Household Buildings & Contents',family:'Property',  version:'2026.04',       status:'published',  effectiveFrom:'01-Apr-2026', effectiveTo:'31-Mar-2027', owner:'Sunita Pillai', lastModified:'10-Aug-2026', sortOrder:7 },
+  { id:'PRD-009', name:'Individual Health — Inpatient', family:'Health',    version:'2026.02',       status:'published',  effectiveFrom:'01-Feb-2026', effectiveTo:'31-Jan-2027', owner:'Rajan Mehta',   lastModified:'05-Aug-2026', sortOrder:8 },
+  { id:'PRD-010', name:'Personal Accident & Disability',family:'Life',      version:'2026.01',       status:'published',  effectiveFrom:'01-Jan-2026', effectiveTo:'31-Dec-2026', owner:'Rajan Mehta',   lastModified:'01-Aug-2026', sortOrder:9 },
+  { id:'PRD-011', name:'Commercial Vehicle Fleet',      family:'Motor',     version:'2026.05-DRAFT', status:'draft',      effectiveFrom:null,          effectiveTo:null,          owner:'Anika Sharma',  lastModified:'18-Aug-2026', sortOrder:10 },
+  { id:'PRD-012', name:'Employers Liability',           family:'Liability', version:'2026.03-RC2',   status:'review',     effectiveFrom:null,          effectiveTo:null,          owner:'Sunita Pillai', lastModified:'19-Aug-2026', sortOrder:11 },
+  { id:'PRD-013', name:'Marine Hull — Small Craft',     family:'Marine',    version:'2026.01',       status:'published',  effectiveFrom:'01-Jan-2026', effectiveTo:'31-Dec-2026', owner:'Priya Varghese',lastModified:'12-Aug-2026', sortOrder:12 },
+  { id:'PRD-014', name:'Travel — Single Trip',          family:'Travel',    version:'2026.02',       status:'published',  effectiveFrom:'01-Feb-2026', effectiveTo:'31-Jan-2027', owner:'Anika Sharma',  lastModified:'08-Aug-2026', sortOrder:13 }
+];
+
+const VERSION_HISTORY = {
+  'PRD-001': [
+    { version:'2026.04', status:'published',  from:'01-Apr-2026', to:'30-Sep-2026' },
+    { version:'2026.01', status:'superseded', from:'01-Jan-2026', to:'31-Mar-2026' },
+    { version:'2025.10', status:'retired',    from:'01-Oct-2025', to:'31-Dec-2025' }
+  ],
+  'PRD-004': [
+    { version:'2026.05', status:'approved',   from:'—', to:'—' },
+    { version:'2026.02', status:'superseded', from:'01-Feb-2026', to:'—' }
+  ],
+  'PRD-007': [
+    { version:'2026.03', status:'published',  from:'01-Mar-2026', to:'28-Feb-2027' },
+    { version:'2025.09', status:'retired',    from:'01-Sep-2025', to:'28-Feb-2026' }
+  ]
+};
+
+const FAMILY_COLORS = {
+  Motor:'#1A4F8A', Health:'#15803D', Property:'#B45309',
+  Trucking:'#475569', Cyber:'#6D28D9', 'Workers Compensation':'#C2410C',
+  Marine:'#0369A1', Travel:'#7C3AED', Life:'#0D9488', Liability:'#DC2626'
+};
+const ALL_FAMILIES = PS.data.productFamilies;
+const ALL_STATUSES = ['draft','review','approved','published','superseded','retired'];
+
+/* ── Filter state ─────────────────────────────────────────── */
+let filters = { search:'', families:[], statuses:[], owner:null };
+let sortKey = 'sortOrder';
+let currentView = 'list';
+let expandedRows = new Set();
+let searchDebounce;
+
+/* ── Init ─────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('catalogue', [{ label:'Product Catalogue', href:'catalogue.html' }]);
+
+  // Build family filter options
+  document.getElementById('family-options').innerHTML = ALL_FAMILIES.map(f => `
+    <div class="dropdown-item" onclick="toggleFamily('${f}')" id="fam-opt-${f}">
+      <span id="fam-check-${f}" style="visibility:hidden;color:var(--color-brand)">✓</span> ${f}
+    </div>`).join('');
+
+  // Build status filter options
+  document.getElementById('status-options').innerHTML = ALL_STATUSES.map(s => `
+    <div class="dropdown-item" onclick="toggleStatus('${s}')" id="stat-opt-${s}">
+      <span id="stat-check-${s}" style="visibility:hidden;color:var(--color-brand)">✓</span>
+      <span class="badge badge-${s}">${PS.statusLabel(s)}</span>
+    </div>`).join('');
+
+  // Read URL params
+  const params = new URLSearchParams(location.search);
+  if (params.get('status')) { filters.statuses = [params.get('status')]; updateStatusCheck(params.get('status')); }
+  if (params.get('id')) { /* scroll to product */ }
+
+  renderAll();
+});
+
+/* ── Render ───────────────────────────────────────────────── */
+function getFiltered() {
+  let data = [...FULL_PRODUCTS];
+  const q = filters.search.toLowerCase();
+  if (q) data = data.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.family.toLowerCase().includes(q));
+  if (filters.families.length) data = data.filter(p => filters.families.includes(p.family));
+  if (filters.statuses.length) data = data.filter(p => filters.statuses.includes(p.status));
+  if (filters.owner) data = data.filter(p => p.owner === filters.owner);
+  data.sort((a,b) => {
+    if (sortKey === 'sortOrder') return a.sortOrder - b.sortOrder;
+    const av = a[sortKey]||'', bv = b[sortKey]||'';
+    return av < bv ? -1 : av > bv ? 1 : 0;
+  });
+  return data;
+}
+
+function renderAll() {
+  const data = getFiltered();
+  updateChips();
+  updateSubtitle(data.length);
+  if (currentView === 'list') renderList(data);
+  else renderCards(data);
+  document.getElementById('empty-state').classList.toggle('hidden', data.length > 0);
+  document.getElementById('list-view-container').classList.toggle('hidden', currentView !== 'list' || data.length === 0);
+  document.getElementById('card-view-container').classList.toggle('hidden', currentView !== 'card' || data.length === 0);
+}
+
+function renderList(data) {
+  const q = filters.search.toLowerCase();
+  const body = document.getElementById('catalogue-body');
+  body.innerHTML = data.map(p => {
+    const nameHtml = q ? highlightMatch(p.name, q) : p.name;
+    const period = p.effectiveFrom ? `${p.effectiveFrom} — ${p.effectiveTo||'Open'}` : '— —';
+    const hasHistory = VERSION_HISTORY[p.id];
+    return `
+    <tr id="row-${p.id}" onclick="navigateToProduct('${p.id}',event)" style="cursor:pointer">
+      <td onclick="event.stopPropagation();toggleExpand('${p.id}')" style="cursor:pointer;text-align:center;padding:0 8px">
+        ${hasHistory ? `<span class="expand-chevron" id="chev-${p.id}">
+          <svg width="14" height="14" viewBox="0 0 256 256" fill="none"><path d="M181.66 133.66l-80 80a8 8 0 01-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0111.32-11.32l80 80a8 8 0 010 11.32z" fill="currentColor"/></svg>
+        </span>` : ''}
+      </td>
+      <td>
+        <a href="product-detail.html?id=${p.id}" onclick="event.stopPropagation()" style="font-weight:500">${nameHtml}</a>
+        <div style="font-size:11px;color:var(--color-muted);font-family:'IBM Plex Mono',monospace;margin-top:1px">${p.id}</div>
+      </td>
+      <td><span class="family-badge">${p.family}</span></td>
+      <td class="mono">${p.version}</td>
+      <td class="text-center"><span class="badge badge-${p.status}" role="status">${PS.statusLabel(p.status)}</span></td>
+      <td style="font-size:13px;color:var(--color-muted)">${period}</td>
+      <td style="font-size:13px">${p.owner}</td>
+      <td style="font-size:13px;color:var(--color-muted)">${p.lastModified}</td>
+      <td onclick="event.stopPropagation()">
+        <div class="table-actions">
+          <a href="product-detail.html?id=${p.id}" class="btn btn-ghost btn-sm">View</a>
+          <button class="btn btn-ghost btn-sm" onclick="openCloneModal('${p.id}')">Clone</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleRowMenu(event,'${p.id}')" aria-label="More options for ${p.name}">
+            <svg width="14" height="14" viewBox="0 0 256 256" fill="none"><path d="M140 128a12 12 0 11-12-12 12 12 0 0112 12zm56-12a12 12 0 100 24 12 12 0 000-24zm-136 0a12 12 0 100 24 12 12 0 000-24z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+    ${hasHistory ? `
+    <tr class="expand-row" id="expand-${p.id}">
+      <td colspan="9">
+        <div class="expand-row-content" id="expand-content-${p.id}">
+          <div class="version-history">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--color-muted);margin-bottom:4px">Version History</div>
+            ${(VERSION_HISTORY[p.id]||[]).map((v,i,arr) => `
+            <div class="version-history-row">
+              <span class="version-tree-icon">${i === arr.length-1 ? '└' : '├'}</span>
+              <span class="mono">${v.version}</span>
+              <span class="badge badge-${v.status}">${PS.statusLabel(v.status)}</span>
+              <span style="font-size:13px;color:var(--color-muted);flex:1">${v.from} — ${v.to}</span>
+              <a href="product-detail.html?id=${p.id}&version=${v.version}" class="btn btn-ghost btn-sm">View</a>
+            </div>`).join('')}
+          </div>
+        </div>
+      </td>
+    </tr>` : ''}`;
+  }).join('');
+
+  document.getElementById('cat-page-info').textContent = `Showing 1–${data.length} of ${data.length}`;
+  document.getElementById('result-count').textContent = `Showing ${data.length} product${data.length !== 1 ? 's' : ''}`;
+
+  // Re-apply expand state
+  expandedRows.forEach(id => {
+    const content = document.getElementById(`expand-content-${id}`);
+    const chev = document.getElementById(`chev-${id}`);
+    if (content) content.classList.add('open');
+    if (chev) chev.classList.add('open');
+  });
+}
+
+function renderCards(data) {
+  const grid = document.getElementById('product-card-grid');
+  grid.innerHTML = data.map(p => {
+    const color = FAMILY_COLORS[p.family] || '#64748B';
+    const period = p.effectiveFrom ? `${p.effectiveFrom} — ${p.effectiveTo||'Open'}` : '—';
+    return `
+    <div class="product-card" style="border-left-color:${color}">
+      <div class="product-card-top">
+        <span class="family-badge">${p.family}</span>
+        <span class="badge badge-${p.status}" role="status">${PS.statusLabel(p.status)}</span>
+      </div>
+      <div class="product-card-body">
+        <div class="product-card-name"><a href="product-detail.html?id=${p.id}" style="color:inherit;text-decoration:none">${p.name}</a></div>
+        <div class="product-card-id">${p.id}</div>
+        <div class="product-card-meta">
+          <div class="product-card-meta-row"><span class="product-card-meta-label">Version</span><span class="text-mono">${p.version}</span></div>
+          <div class="product-card-meta-row"><span class="product-card-meta-label">Effective</span><span>${period}</span></div>
+          <div class="product-card-meta-row"><span class="product-card-meta-label">Owner</span><span>${p.owner}</span></div>
+          <div class="product-card-meta-row"><span class="product-card-meta-label">Modified</span><span>${p.lastModified}</span></div>
+        </div>
+      </div>
+      <div class="product-card-footer">
+        <a href="product-detail.html?id=${p.id}" class="btn btn-primary btn-sm" style="flex:1">View Product</a>
+        <button class="btn btn-icon btn-sm" onclick="toggleRowMenu(event,'${p.id}')" aria-label="More options">
+          <svg width="14" height="14" viewBox="0 0 256 256" fill="none"><path d="M140 128a12 12 0 11-12-12 12 12 0 0112 12zm56-12a12 12 0 100 24 12 12 0 000-24zm-136 0a12 12 0 100 24 12 12 0 000-24z" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('result-count').textContent = `Showing ${data.length} product${data.length !== 1 ? 's' : ''}`;
+}
+
+/* ── Helpers ──────────────────────────────────────────────── */
+function highlightMatch(text, q) {
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return text;
+  return text.slice(0, idx) + `<mark class="search-hl">${text.slice(idx, idx+q.length)}</mark>` + text.slice(idx+q.length);
+}
+function updateSubtitle(count) {
+  const families = new Set(getFiltered().map(p=>p.family)).size;
+  document.getElementById('catalogue-subtitle').textContent =
+    count === 14 ? '14 products across 6 product families'
+    : `${count} product${count!==1?'s':''} found`;
+}
+
+function navigateToProduct(id, event) {
+  if (event.target.closest('button,a,.expand-chevron')) return;
+  window.location.href = `product-detail.html?id=${id}`;
+}
+
+function toggleExpand(id) {
+  const content = document.getElementById(`expand-content-${id}`);
+  const chev    = document.getElementById(`chev-${id}`);
+  if (!content) return;
+  const isOpen = content.classList.contains('open');
+  if (isOpen) { content.classList.remove('open'); chev?.classList.remove('open'); expandedRows.delete(id); }
+  else { content.classList.add('open'); chev?.classList.add('open'); expandedRows.add(id); }
+}
+
+/* ── Filters ──────────────────────────────────────────────── */
+function handleSearch(val) {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => { filters.search = val; renderAll(); }, 300);
+}
+
+function toggleFamily(f) {
+  const idx = filters.families.indexOf(f);
+  if (idx === -1) filters.families.push(f); else filters.families.splice(idx, 1);
+  updateFamilyChecks();
+  renderAll();
+}
+function updateFamilyChecks() {
+  ALL_FAMILIES.forEach(f => {
+    const el = document.getElementById(`fam-check-${f}`);
+    if (el) el.style.visibility = filters.families.includes(f) ? 'visible' : 'hidden';
+  });
+  const btn = document.getElementById('family-filter-btn');
+  if (btn) btn.style.color = filters.families.length ? 'var(--color-brand)' : '';
+}
+
+function toggleStatus(s) {
+  const idx = filters.statuses.indexOf(s);
+  if (idx === -1) filters.statuses.push(s); else filters.statuses.splice(idx, 1);
+  updateStatusCheck(s);
+  renderAll();
+}
+function updateStatusCheck(s) {
+  const el = document.getElementById(`stat-check-${s}`);
+  if (el) el.style.visibility = filters.statuses.includes(s) ? 'visible' : 'hidden';
+  const btn = document.getElementById('status-filter-btn');
+  if (btn) btn.style.color = filters.statuses.length ? 'var(--color-brand)' : '';
+}
+
+function setOwner(name) {
+  filters.owner = name;
+  toggleDD('owner-menu');
+  const btn = document.getElementById('owner-filter-btn');
+  if (btn) btn.style.color = name ? 'var(--color-brand)' : '';
+  renderAll();
+}
+
+function clearAllFilters() {
+  filters = { search:'', families:[], statuses:[], owner:null };
+  document.getElementById('cat-search').value = '';
+  updateFamilyChecks();
+  ALL_STATUSES.forEach(s => { const el = document.getElementById(`stat-check-${s}`); if(el) el.style.visibility='hidden'; });
+  document.getElementById('family-filter-btn').style.color = '';
+  document.getElementById('status-filter-btn').style.color = '';
+  document.getElementById('owner-filter-btn').style.color = '';
+  renderAll();
+}
+
+function updateChips() {
+  const chipsRow = document.getElementById('filter-chips');
+  const container = document.getElementById('chips-container');
+  const chips = [];
+  if (filters.search) chips.push({ label:`Search: "${filters.search}"`, remove:()=>{filters.search='';document.getElementById('cat-search').value='';renderAll();} });
+  filters.families.forEach(f => chips.push({ label:`Family: ${f}`, remove:()=>{filters.families=filters.families.filter(x=>x!==f);updateFamilyChecks();renderAll();} }));
+  filters.statuses.forEach(s => chips.push({ label:`Status: ${PS.statusLabel(s)}`, remove:()=>{filters.statuses=filters.statuses.filter(x=>x!==s);updateStatusCheck(s);renderAll();} }));
+  if (filters.owner) chips.push({ label:`Owner: ${filters.owner}`, remove:()=>{filters.owner=null;renderAll();} });
+  chipsRow.style.display = chips.length ? 'flex' : 'none';
+  container.innerHTML = chips.map((_,i)=>i).map(i => {
+    const c = chips[i];
+    return `<span class="filter-chip">${c.label}<span class="filter-chip-remove" onclick="(${c.remove.toString()})()">
+      <svg width="10" height="10" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+    </span></span>`;
+  }).join('');
+}
+
+/* ── View / Sort ──────────────────────────────────────────── */
+function setView(v) {
+  currentView = v;
+  document.getElementById('list-view-btn').classList.toggle('active', v === 'list');
+  document.getElementById('card-view-btn').classList.toggle('active', v === 'card');
+  renderAll();
+}
+function setSort(key, label) {
+  sortKey = key;
+  document.getElementById('sort-label').textContent = label;
+  toggleDD('sort-menu');
+  renderAll();
+}
+
+/* ── Dropdown helper ──────────────────────────────────────── */
+function toggleDD(id) {
+  const menu = document.getElementById(id);
+  const isHidden = menu.classList.contains('hidden');
+  document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+  if (isHidden) menu.classList.remove('hidden');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown') && !e.target.closest('[id$="-btn"]')) {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+  }
+});
+
+/* ── Row more-menu ────────────────────────────────────────── */
+function toggleRowMenu(event, id) {
+  event.stopPropagation();
+  document.querySelectorAll('[id^="row-menu-"]').forEach(m => m.remove());
+  const btn = event.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const p = FULL_PRODUCTS.find(x=>x.id===id);
+  const canRetire = ['published','superseded'].includes(p.status);
+  const canDelete = p.status === 'draft';
+  const menu = document.createElement('div');
+  menu.id = `row-menu-${id}`;
+  menu.className = 'dropdown-menu';
+  menu.style.cssText = `position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;z-index:999`;
+  menu.innerHTML = `
+    <div class="dropdown-item" onclick="navigateTo('product-detail.html?id=${id}')">View Product</div>
+    <div class="dropdown-item" onclick="openCloneModal('${id}')">Clone Product</div>
+    <div class="dropdown-item" onclick="navigateTo('product-detail.html?id=${id}#versions')">View All Versions</div>
+    <div class="dropdown-item" onclick="navigateTo('audit-log.html?product=${id}')">View Audit Log</div>
+    ${canDelete ? `<div class="dropdown-sep"></div><div class="dropdown-item danger" onclick="openDeleteDraftModal('${id}','${p.version}')">Delete Draft</div>` : ''}
+    ${canRetire ? `<div class="dropdown-sep"></div><div class="dropdown-item danger" onclick="openRetireModal('${id}')">Retire Product</div>` : ''}
+  `;
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), {once:true}), 0);
+}
+function navigateTo(url) { window.location.href = url; }
+
+/* ── Clone Modal ──────────────────────────────────────────── */
+function openCloneModal(id) {
+  document.querySelectorAll('[id^="row-menu-"]').forEach(m => m.remove());
+  const p = FULL_PRODUCTS.find(x=>x.id===id);
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Clone Product</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-info" style="margin-bottom:var(--space-5)">
+        <div class="callout-body">
+          <div class="callout-title">Cloning from ${p.name} (${p.version})</div>
+          A new Draft product will be created with all configuration copied. You can then modify it independently.
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="clone-name">New Product Name <span class="required">*</span></label>
+        <input type="text" id="clone-name" class="form-control" value="${p.name} (Copy)" placeholder="Enter new product name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="clone-version">New Version Label <span class="required">*</span></label>
+        <input type="text" id="clone-version" class="form-control" value="${new Date().getFullYear()}.01" placeholder="e.g. 2026.08">
+        <span class="form-help">This will be the initial draft version label.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="clone-owner">Assign Owner</label>
+        <select id="clone-owner" class="form-control">
+          <option>Anika Sharma</option><option>Rajan Mehta</option>
+          <option>Sunita Pillai</option><option>Priya Varghese</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="executeClone('${id}')">Create Clone</button>
+    </div>
+  `);
+}
+function executeClone(id) {
+  const name = document.getElementById('clone-name')?.value.trim();
+  if (!name) { PS.actionResult('error','Validation error','Product name is required.'); return; }
+  PS.closeModal();
+  PS.actionResult('success','Product cloned',`"${name}" created as a draft.`);
+}
+
+/* ── Retire Modal ─────────────────────────────────────────── */
+function openRetireModal(id) {
+  const p = FULL_PRODUCTS.find(x=>x.id===id);
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Retire Product</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-error" style="margin-bottom:var(--space-5)">
+        <div class="callout-body">
+          <div class="callout-title">This action cannot be undone</div>
+          Retiring a product removes it from active distribution. Existing policies will not be affected.
+        </div>
+      </div>
+      <p style="margin-bottom:var(--space-5)">You are about to retire <strong>${p.name}</strong>. Type the product name below to confirm.</p>
+      <div class="form-group">
+        <label class="form-label">Confirm by typing: <code style="font-family:monospace;background:var(--color-surface);padding:2px 6px;border-radius:4px">${p.name}</code></label>
+        <input type="text" id="retire-confirm" class="form-control" placeholder="Type exact product name…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="executeRetire('${id}','${p.name}')">Retire Product</button>
+    </div>
+  `, 'modal-sm');
+}
+function executeRetire(id, name) {
+  const input = document.getElementById('retire-confirm')?.value.trim();
+  if (input !== name) { PS.actionResult('error','Confirmation mismatch','Type the exact product name to confirm.'); return; }
+  PS.closeModal();
+  PS.actionResult('success','Product retired',`"${name}" has been retired.`);
+}
+
+/* ── Export / Import ──────────────────────────────────────── */
+function handleExport() { PS.actionResult('info','Export started','Downloading current view as CSV…'); }
+function handleImport() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Import Products</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-info" style="margin-bottom:var(--space-5)">
+        <div class="callout-body">Accepts JSON or CSV format. Download a <a href="#">template file</a> to see the required structure.</div>
+      </div>
+      <div style="border:2px dashed var(--color-border);border-radius:var(--radius-lg);padding:40px;text-align:center;cursor:pointer;background:var(--color-surface)" onclick="PS.actionResult('info','File picker','File picker would open here in production.')">
+        <svg width="40" height="40" viewBox="0 0 256 256" fill="none" style="color:var(--color-muted);margin:0 auto 12px"><path d="M224 152v56a16 16 0 01-16 16H48a16 16 0 01-16-16v-56a8 8 0 0116 0v56h160v-56a8 8 0 0116 0zm-101.66-98.34a8 8 0 00-11.32 0l-40 40a8 8 0 0011.32 11.32L120 78.63V168a8 8 0 0016 0V78.63l26.34 26.35a8 8 0 0011.32-11.32z" fill="currentColor"/></svg>
+        <div style="font-weight:500;margin-bottom:4px">Drag & drop a file here</div>
+        <div style="font-size:13px;color:var(--color-muted)">or click to browse — JSON or CSV, max 10MB</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" disabled>Import</button>
+    </div>
+  `);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NEW PRODUCT WIZARD
+═══════════════════════════════════════════════════════════ */
+let wizardStep = 1;
+const WIZARD_STEPS = ['Product Identity','Version Setup','Initial Studios','Review & Create'];
+
+function openNewProductWizard() {
+  wizardStep = 1;
+  PS.openModal(buildWizardHTML(), 'modal-lg');
+}
+
+function buildWizardHTML() {
+  return `
+  <div class="modal-header">
+    <h2 class="modal-title">New Product</h2>
+    <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <!-- Stepper -->
+    <div class="stepper" id="wizard-stepper">${buildStepper()}</div>
+
+    <!-- Step 1 -->
+    <div class="wizard-step ${wizardStep===1?'active':''}" id="wizard-step-1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5)">
+        <div class="form-group">
+          <label class="form-label" for="w-family">Insurance Family <span class="required">*</span></label>
+          <select id="w-family" class="form-control" onchange="updateProductCode()">
+            <option value="">Select family…</option>
+            ${PS.data.productFamilies.map(f => `<option>${f}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="w-segment">Market Segment</label>
+          <select id="w-segment" class="form-control">
+            <option>Personal Lines</option><option>Commercial Lines</option>
+            <option>Group</option><option>Specialty</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label" for="w-name">Product Name <span class="required">*</span></label>
+          <input type="text" id="w-name" class="form-control" maxlength="100" placeholder="e.g. Private Car Comprehensive" oninput="updateProductCode()">
+          <span class="form-help">Max 100 characters</span>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label" for="w-desc">Product Description</label>
+          <textarea id="w-desc" class="form-control" rows="3" maxlength="500" placeholder="Brief description of the product and its intended market…"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="w-owner">Product Owner <span class="required">*</span></label>
+          <select id="w-owner" class="form-control">
+            <option>Anika Sharma</option><option>Rajan Mehta</option>
+            <option>Sunita Pillai</option><option>Priya Varghese</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="w-code">Internal Product Code</label>
+          <input type="text" id="w-code" class="form-control" value="Generated on save" data-system-generated readonly aria-readonly="true" style="font-family:'IBM Plex Mono',monospace;font-size:13px">
+          <span class="form-help">Format: [FAM]-[YEAR]-[SEQ]. Auto-suggested.</span>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Jurisdictions</label>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">
+            ${['India','UAE','UK','US','Singapore','Kenya'].map(j => `
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="checkbox" style="width:16px;height:16px;accent-color:var(--color-brand)" value="${j}"> ${j}
+            </label>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="wizard-step" id="wizard-step-2">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5)">
+        <div class="form-group">
+          <label class="form-label" for="w-version">Version Label <span class="required">*</span></label>
+          <input type="text" id="w-version" class="form-control" value="${new Date().getFullYear()}.01" style="font-family:'IBM Plex Mono',monospace;font-size:13px">
+          <span class="form-help">e.g. 2026.08 — your internal versioning scheme</span>
+        </div>
+        <div></div>
+        <div class="form-group">
+          <label class="form-label" for="w-eff-from">Effective From <span class="required">*</span></label>
+          <input type="date" id="w-eff-from" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="w-eff-to">Effective To</label>
+          <input type="date" id="w-eff-to" class="form-control">
+          <span class="form-help">Leave blank for open-ended.</span>
+        </div>
+      </div>
+      <div style="margin-top:var(--space-4);padding:var(--space-5);border:1px solid var(--color-border);border-radius:var(--radius-lg)">
+        <div class="flex-between" style="margin-bottom:var(--space-3)">
+          <div>
+            <div style="font-size:14px;font-weight:500">Clone configuration from existing product?</div>
+            <div style="font-size:13px;color:var(--color-muted)">Copy coverage, eligibility, and rating rules from a published version.</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+            <input type="checkbox" id="w-clone-toggle" style="opacity:0;width:0;height:0" onchange="toggleCloneSection()">
+            <span id="w-clone-slider" style="position:absolute;inset:0;background:var(--color-disabled);border-radius:11px;transition:.2s;cursor:pointer"></span>
+            <span id="w-clone-dot" style="position:absolute;left:2px;top:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s"></span>
+          </label>
+        </div>
+        <div id="clone-source-section" style="display:none;padding-top:var(--space-4);border-top:1px solid var(--color-border)">
+          <div class="form-group">
+            <label class="form-label" for="w-clone-product">Source Product</label>
+            <select id="w-clone-product" class="form-control">
+              ${FULL_PRODUCTS.filter(p=>p.status==='published'||p.status==='approved').map(p=>`<option value="${p.id}">${p.name} — v${p.version}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="wizard-step" id="wizard-step-3">
+      <p style="font-size:14px;color:var(--color-muted);margin-bottom:var(--space-5)">Select which studios to configure during setup. You can access any studio later from the product detail page.</p>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+        ${[
+          { id:'s-coverage',    label:'Coverage Studio',          desc:'Define what is covered, limits, deductibles, and exclusions.',          checked:true },
+          { id:'s-quest',       label:'Questionnaire Studio',     desc:'Build the questions asked at quote, application, and renewal.',          checked:true },
+          { id:'s-eligibility', label:'Eligibility Studio',       desc:'Set rules for who can buy this product.',                               checked:true },
+          { id:'s-rating',      label:'Rating & Pricing Studio',  desc:'Configure base rates, factors, and premium calculation rules.',          checked:true },
+          { id:'s-uw',          label:'Underwriting Rules Studio',desc:'Define accept/decline/refer rules and loading logic.',                   checked:true },
+          { id:'s-dist',        label:'Distribution Studio',      desc:'Configure channels, broker agreements, and commission structures.',      checked:false },
+          { id:'s-doc',         label:'Document Studio',          desc:'Set up policy documents, endorsements, and certificate templates.',       checked:false }
+        ].map(s => `
+        <label style="display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-4);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;transition:background .1s" onmouseenter="this.style.background='var(--color-surface)'" onmouseleave="this.style.background=''">
+          <input type="checkbox" id="${s.id}" ${s.checked?'checked':''} style="width:18px;height:18px;accent-color:var(--color-brand);margin-top:1px;flex-shrink:0">
+          <div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:2px">${s.label}</div>
+            <div style="font-size:13px;color:var(--color-muted)">${s.desc}</div>
+          </div>
+        </label>`).join('')}
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="wizard-step" id="wizard-step-4">
+      <div class="callout callout-success" style="margin-bottom:var(--space-5)">
+        <div class="callout-body">Review all details below. Once created, the product will be in Draft status.</div>
+      </div>
+      <div id="wizard-review-content" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)"></div>
+    </div>
+  </div>
+  <div class="modal-footer" id="wizard-footer">
+    <button class="btn btn-secondary" id="wizard-back-btn" onclick="wizardBack()" style="margin-right:auto">← Back</button>
+    <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+    <button class="btn btn-primary" id="wizard-next-btn" onclick="wizardNext()">Continue →</button>
+  </div>`;
+}
+
+function buildStepper() {
+  return WIZARD_STEPS.map((label, i) => {
+    const num = i + 1;
+    const cls = num < wizardStep ? 'done' : num === wizardStep ? 'active' : '';
+    const icon = num < wizardStep ? '✓' : num;
+    const connector = i < WIZARD_STEPS.length - 1
+      ? `<div class="stepper-connector ${num < wizardStep ? 'done' : ''}"></div>` : '';
+    return `<div class="stepper-step ${cls}">
+      <div class="stepper-circle">${icon}</div>
+      <div class="stepper-label">${label}</div>
+    </div>${connector}`;
+  }).join('');
+}
+
+function wizardNext() {
+  // Validation per step
+  if (wizardStep === 1) {
+    const fam = document.getElementById('w-family')?.value;
+    const name = document.getElementById('w-name')?.value.trim();
+    if (!fam || !name) { PS.actionResult('error','Required fields missing','Please select a family and enter a product name.'); return; }
+  }
+  if (wizardStep === 2) {
+    const from = document.getElementById('w-eff-from')?.value;
+    if (!from) { PS.actionResult('error','Required field missing','Please select an effective from date.'); return; }
+  }
+  if (wizardStep === 4) { executeCreate(); return; }
+  wizardStep++;
+  refreshWizard();
+}
+function wizardBack() {
+  if (wizardStep === 1) return;
+  wizardStep--;
+  refreshWizard();
+}
+
+function refreshWizard() {
+  // Update stepper
+  document.getElementById('wizard-stepper').innerHTML = buildStepper();
+  // Show/hide steps
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById(`wizard-step-${i}`)?.classList.toggle('active', i === wizardStep);
+  }
+  // Update footer buttons
+  const backBtn = document.getElementById('wizard-back-btn');
+  const nextBtn = document.getElementById('wizard-next-btn');
+  if (backBtn) backBtn.style.visibility = wizardStep === 1 ? 'hidden' : 'visible';
+  if (nextBtn) nextBtn.textContent = wizardStep === 4 ? 'Create Product' : 'Continue →';
+
+  if (wizardStep === 4) buildReview();
+}
+
+function buildReview() {
+  const fam  = document.getElementById('w-family')?.value || '—';
+  const name = document.getElementById('w-name')?.value || '—';
+  const seg  = document.getElementById('w-segment')?.value || '—';
+  const desc = document.getElementById('w-desc')?.value || '—';
+  const owner= document.getElementById('w-owner')?.value || '—';
+  const code = document.getElementById('w-code')?.value || '—';
+  const ver  = document.getElementById('w-version')?.value || '—';
+  const from = document.getElementById('w-eff-from')?.value || '—';
+  const to   = document.getElementById('w-eff-to')?.value || 'Open-ended';
+  const studios = ['s-coverage','s-quest','s-eligibility','s-rating','s-uw','s-dist','s-doc']
+    .filter(id => document.getElementById(id)?.checked)
+    .map(id => document.getElementById(id)?.closest('label')?.querySelector('div > div')?.textContent || id);
+
+  document.getElementById('wizard-review-content').innerHTML = `
+    <div style="grid-column:1/-1">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted);margin-bottom:var(--space-3)">Product Identity</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">
+        ${[['Product Name', name],['Family', fam],['Market Segment', seg],['Product Owner', owner],['Internal Code', code]].map(([l,v]) => `
+        <div><div style="font-size:12px;color:var(--color-muted)">${l}</div><div style="font-size:14px;font-weight:500;margin-top:2px">${v}</div></div>`).join('')}
+      </div>
+      ${desc !== '—' ? `<div style="margin-top:12px"><div style="font-size:12px;color:var(--color-muted)">Description</div><div style="font-size:13px;margin-top:2px">${desc}</div></div>` : ''}
+    </div>
+    <div style="grid-column:1/-1;border-top:1px solid var(--color-border);padding-top:var(--space-4);margin-top:var(--space-2)">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted);margin-bottom:var(--space-3)">Version Setup</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)">
+        ${[['Version Label', ver],['Effective From', from],['Effective To', to]].map(([l,v]) => `
+        <div><div style="font-size:12px;color:var(--color-muted)">${l}</div><div style="font-size:14px;font-weight:500;margin-top:2px;font-family:${l==='Version Label'?"'IBM Plex Mono',monospace":''}">${v}</div></div>`).join('')}
+      </div>
+    </div>
+    <div style="grid-column:1/-1;border-top:1px solid var(--color-border);padding-top:var(--space-4);margin-top:var(--space-2)">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted);margin-bottom:var(--space-3)">Studios to Configure</div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">
+        ${studios.map(s=>`<span class="role-badge">${s}</span>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function updateProductCode() {
+  const fam = document.getElementById('w-family')?.value;
+  if (!fam) return;
+  const famCode = fam.substring(0,3).toUpperCase();
+  const year = new Date().getFullYear();
+  const seq = String(Math.floor(Math.random()*900)+100);
+  document.getElementById('w-code').value = `${famCode}-${year}-${seq}`;
+}
+
+function toggleCloneSection() {
+  const checked = document.getElementById('w-clone-toggle')?.checked;
+  document.getElementById('clone-source-section').style.display = checked ? 'block' : 'none';
+  const slider = document.getElementById('w-clone-slider');
+  const dot    = document.getElementById('w-clone-dot');
+  if (slider) slider.style.background = checked ? 'var(--color-brand)' : 'var(--color-disabled)';
+  if (dot) dot.style.transform = checked ? 'translateX(18px)' : '';
+}
+
+function executeCreate() {
+  const name = document.getElementById('w-name')?.value || 'New Product';
+  PS.closeModal();
+  PS.actionResult('success','Product created',`"${name}" has been created as a draft. Redirecting to product detail…`);
+  setTimeout(() => { window.location.href = 'product-detail.html?id=PRD-NEW'; }, 1800);
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

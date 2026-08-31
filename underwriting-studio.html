@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Underwriting Studio — Product Studio | VeriDex</title>
+  <meta name="description" content="Configure the risk appetite rules that evaluate quotation and risk data to produce underwriting decisions.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Two-panel layout ──────────────────────── */
+    .studio-layout { display: grid; grid-template-columns: 320px 1fr; gap: var(--space-5); align-items: start; }
+
+    /* ── Rule list sidebar ─────────────────────── */
+    .rule-sidebar { position: sticky; top: calc(56px + var(--space-6)); }
+    .rule-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); }
+    .rule-section { margin-bottom: var(--space-2); }
+    .rule-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-2) var(--space-3); cursor: pointer;
+    }
+    .rule-section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--color-muted);
+    }
+    .rule-item {
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: 10px var(--space-4);
+      border-radius: var(--radius-md); cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .1s, border-color .1s;
+    }
+    .rule-item:hover { background: var(--color-surface); }
+    .rule-item.active { background: var(--color-brand-light); border-left-color: var(--color-brand); }
+    .rule-outcome-badge {
+      display: inline-flex; height: 20px; padding: 0 8px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .3px; align-items: center;
+      text-transform: uppercase; flex-shrink: 0;
+    }
+    .outcome-accept   { background: #DCFCE7; color: var(--color-success); }
+    .outcome-decline  { background: #FEE2E2; color: var(--color-danger); }
+    .outcome-refer    { background: #F3E8FF; color: #7C3AED; }
+    .outcome-load     { background: #FEF3C7; color: var(--color-warning); }
+    .outcome-restrict { background: #E0E7FF; color: #4338CA; }
+    .outcome-evidence { background: #EBF1FA; color: var(--color-brand); }
+    
+    .rule-item-body { flex: 1; min-width: 0; }
+    .rule-item-name { font-size: 13px; font-weight: 500; color: var(--color-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rule-item.active .rule-item-name { color: var(--color-brand); }
+    .rule-item-meta { font-size: 11px; color: var(--color-muted); margin-top: 2px; }
+    
+    .rule-status-icon { flex-shrink: 0; font-size: 12px; margin-top: 2px; }
+    .rule-status-active { color: var(--color-success); }
+
+    /* ── Section card ──────────────────────────── */
+    .section-card { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); cursor: pointer; user-select: none; transition: background .1s; }
+    .section-header:hover { background: var(--color-surface); }
+    .section-header-left { display: flex; align-items: center; gap: var(--space-3); }
+    .section-number { width: 24px; height: 24px; border-radius: 50%; background: var(--color-brand-light); color: var(--color-brand); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .section-title { font-size: 14px; font-weight: 600; }
+    .section-subtitle { font-size: 12px; color: var(--color-muted); margin-top: 1px; }
+    .section-chevron { color: var(--color-muted); transition: transform .2s; }
+    .section-chevron.open { transform: rotate(90deg); }
+    .section-body { border-top: 1px solid var(--color-border); max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .section-body.open { max-height: 2000px; overflow: visible; }
+    .section-inner { padding: var(--space-5) var(--space-6); }
+
+    /* ── Form grids ────────────────────────────── */
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-6); }
+    .span-2 { grid-column: 1 / -1; }
+
+    /* ── Toggle ────────────────────────────────── */
+    .toggle-wrap { display: flex; align-items: center; gap: var(--space-3); font-size: 13px; }
+    .toggle-switch { position: relative; width: 40px; height: 22px; display: inline-block; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; border-radius: 11px; cursor: pointer; transition: .2s; }
+    .toggle-on  .toggle-slider { background: var(--color-brand); }
+    .toggle-off .toggle-slider { background: var(--color-disabled); }
+    .toggle-dot { position: absolute; top: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: .2s; }
+    .toggle-on  .toggle-dot { left: calc(100% - 20px); }
+    .toggle-off .toggle-dot { left: 2px; }
+
+    /* ── Condition builder ─────────────────────── */
+    .condition-builder { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .cb-header {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    }
+    .cb-dir-btn {
+      padding: 4px 12px; border: 1px solid var(--color-brand); border-radius: var(--radius-md); font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .3px; background: var(--color-brand-light); color: var(--color-brand);
+    }
+    .cb-group { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+    .cb-group:last-child { border-bottom: none; }
+    .cb-group-label { font-size: 10px; font-weight: 700; color: var(--color-muted); margin-bottom: var(--space-2); }
+    .cb-row {
+      display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2);
+    }
+    .cb-row select, .cb-row input { height: 32px; font-size: 13px; }
+    .cb-logic-connector { font-size: 10px; font-weight: 700; color: var(--color-brand); text-align: center; margin-bottom: var(--space-2); }
+
+    /* ── Rule preview box ──────────────────────── */
+    .rule-preview-box {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-5);
+      border-left: 4px solid var(--color-brand);
+    }
+    .rp-title { font-size: 14px; font-weight: 700; margin-bottom: var(--space-2); }
+    .rp-meta { font-size: 12px; color: var(--color-muted); margin-bottom: var(--space-3); }
+    .rp-line { font-size: 13px; margin-bottom: var(--space-2); }
+    .rp-label { font-weight: 600; color: var(--color-muted); margin-right: 4px; }
+    .rp-value { color: var(--color-ink); }
+    .rp-message { font-style: italic; color: var(--color-muted); }
+
+    /* ── Test modal ────────────────────────────── */
+    .test-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 480px; }
+    .test-input-panel { padding: var(--space-5); border-right: 1px solid var(--color-border); }
+    .test-result-panel { padding: var(--space-5); background: #F8FAFF; }
+    .test-result-item {
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-2); background: #fff; border: 1px solid var(--color-border);
+    }
+    .test-trigger { border-color: #FCA5A5; background: #FEF2F2; }
+    .test-icon { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+
+    /* ── Decision tree modal ───────────────────── */
+    .dt-layout { display: grid; grid-template-columns: 300px 1fr; gap: 0; height: 600px; }
+    .dt-sidebar { padding: var(--space-4); border-right: 1px solid var(--color-border); overflow-y: auto; }
+    .dt-canvas { padding: var(--space-5); background: #FAFBFF; overflow: auto; display: flex; flex-direction: column; align-items: center; }
+    .dt-node {
+      border: 1px solid var(--color-border); border-radius: var(--radius-md);
+      background: #fff; padding: var(--space-3); width: 280px; margin-bottom: var(--space-5);
+      position: relative; box-shadow: var(--shadow-sm);
+    }
+    .dt-node::after {
+      content: ''; position: absolute; bottom: -21px; left: 50%; width: 2px; height: 20px; background: var(--color-border);
+    }
+    .dt-node:last-child::after { display: none; }
+    .dt-node-title { font-size: 13px; font-weight: 600; margin-bottom: var(--space-2); }
+    .dt-edge { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: var(--space-2); }
+    .dt-edge-line { width: 40px; height: 2px; background: var(--color-border); }
+    .dt-outcome { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+    /* ── Context bar ───────────────────────────── */
+    .studio-context-bar {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); margin-bottom: var(--space-5); font-size: 13px;
+    }
+    .studio-context-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; background: var(--color-panel);
+      border: 1px solid var(--color-border); border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+    }
+    .audit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .audit-table th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); }
+    .audit-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+  </style>
+</head>
+<body class="studio-page">
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Underwriting Studio</h1>
+          <p class="page-subtitle">Private Car Comprehensive · v2026.04 — 9 rules configured</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="openAuthorityModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M116 112v48a12 12 0 1024 0v-48a12 12 0 10-24 0zm12-88a104 104 0 10104 104A104.11 104.11 0 00128 24zm0 192a88 88 0 1188-88 88.1 88.1 0 01-88 88zm24-88a24 24 0 11-24-24 24 24 0 0124 24z" fill="currentColor"/></svg>
+            Authority
+          </button>
+          <button class="btn btn-ghost" onclick="openDecisionTreeModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 88h-48a8 8 0 000 16h16v40a16 16 0 01-16 16h-40v-16a8 8 0 00-16 0v48a8 8 0 0016 0v-16h40a32 32 0 0032-32v-40h16a8 8 0 000-16zM88 184a8 8 0 00-16 0v16H32a8 8 0 000 16h40v16a8 8 0 0016 0v-48zM120 40H80a8 8 0 000 16h40a16 16 0 0116 16v40h-16a8 8 0 000 16v-48a32 32 0 00-32-32H32a8 8 0 000 16h56v16a8 8 0 0016 0V40z" fill="currentColor"/></svg>
+            Decision Tree
+          </button>
+          <button class="btn btn-secondary" onclick="openTestRulesModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M221.69 199.77L160 96.92V40h8a8 8 0 000-16H88a8 8 0 000 16h8v56.92L34.31 199.77A16 16 0 0048 224h160a16 16 0 0013.69-24.23z" fill="currentColor"/></svg>
+            Test Rules
+          </button>
+          <button class="btn btn-primary" onclick="openAddUWRuleModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+            Add Rule
+          </button>
+        </div>
+      </div>
+
+      <div class="studio-context-bar">
+        <span class="studio-context-pill">
+          <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+          PRD-001 · v2026.04
+        </span>
+        <span style="color:var(--color-muted)">·</span>
+        <span>2 accept · 3 decline · 2 refer · 1 load · 1 restrict</span>
+        <div style="margin-left:auto"><a href="product-detail.html?id=PRD-001#studios" class="btn btn-ghost btn-sm">← Back to Product</a></div>
+      </div>
+
+      <div class="published-only-banner" style="background:var(--color-brand-light);border:1px solid rgba(26,79,138,.2);border-radius:var(--radius-md);padding:var(--space-3) var(--space-5);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--color-brand);margin-bottom:var(--space-5)">
+        <span>📌 This version is <strong>Published</strong> — underwriting rules are read-only.</span>
+        <button class="btn btn-primary btn-sm" onclick="PS.actionResult('info','Clone','Clone this version from Product Detail.')">Clone Version to Edit</button>
+      </div>
+
+      <div class="studio-layout">
+        <!-- LEFT: Rule List -->
+        <div class="rule-sidebar">
+          <div class="card">
+            <div class="card-header" style="padding:var(--space-4) var(--space-5)">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted)">Underwriting Rules</div>
+            </div>
+            <div class="rule-list" id="rule-list"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Detail Panel -->
+        <div id="detail-panel" style="display:flex;flex-direction:column;gap:var(--space-4)"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+const RULES = [
+  { id:'UW-DCL-001', name:'Multiple Serious Convictions', type:'decline', priority:5, status:'active', cat:'Driver Quality',
+    desc:'Decline any risk where the primary driver has 2 or more serious motoring convictions in the past 5 years.',
+    condition:{ 
+      groups:[{ logic:'AND', rows:[{ f:'conviction_count',op:'≥',v:'2' },{ f:'conviction_severity',op:'in',v:'Serious, Very Serious' },{ f:'conviction_years_ago',op:'≤',v:'5' }] }]
+    },
+    out:{ type:'Decline', reason:'UW-DCL-CONV-SERIOUS', cat:'Driver Risk — Conviction History',
+          custMsg:"We're unable to provide a quotation based on the driving history provided. You may wish to contact a specialist insurer.",
+          intMsg:'Primary driver has ≥2 serious convictions within 5 years. Outside appetite.',
+          regDisc:true, discText:'This decline is recorded in our underwriting system. You have the right to request the reason for this decision in writing within 30 days.',
+          refAllow:false, overrideAllow:false },
+    prio:{ exec:'Evaluated after Eligibility rules, before Refer rules', conflict:'First match wins (higher-priority rule takes effect)' },
+    auth:{ min:'Senior Underwriter', reqRsn:true, audit:'Always' },
+    audit:[
+      { d:'15-Mar-2026', u:'Sunita Pillai', c:'Created rule UW-DCL-001' },
+      { d:'18-Mar-2026', u:'Sunita Pillai', c:'Changed conviction_count threshold from 3 to 2' },
+      { d:'20-Mar-2026', u:'Rajan Mehta', c:'Approved (UW gate)' }
+    ]
+  },
+  { id:'UW-DCL-002', name:'Vehicle Salvage Status', type:'decline', priority:6, status:'active', cat:'Vehicle Quality', desc:'Decline salvaged vehicles.' },
+  { id:'UW-DCL-003', name:'Unlicensed Driver', type:'decline', priority:7, status:'active', cat:'Driver Quality', desc:'Decline if no valid license.' },
+  { id:'UW-REF-001', name:'High-Value Vehicle', type:'refer', priority:10, status:'active', cat:'Vehicle Quality',
+    desc:'Refer vehicles over $40k or exotic makes.',
+    condition:{
+      groups:[{ logic:'OR', rows:[{f:'insured_value',op:'>',v:'40000'}, {f:'vehicle_make',op:'in',v:'[Exotic Makes]'}] }]
+    },
+    out:{ type:'Refer', reason:'UW-REF-HIGHVAL', queue:'Motor — High Value Specialist Team', reqAuth:'Senior Underwriter',
+          custMsg:'Your vehicle requires a specialist review. Our underwriting team will contact you within 2 business hours.', SLA:'2 business hours',
+          canDcl:true, canLoad:true },
+    prio:{ exec:'Evaluated after Decline rules', conflict:'First match wins' },
+    auth:{ min:'Senior Underwriter', reqRsn:true, audit:'Always' }, audit:[]
+  },
+  { id:'UW-REF-002', name:'Previous Total Loss', type:'refer', priority:11, status:'active', cat:'Claim History', desc:'Refer if previous total loss.' },
+  { id:'UW-LOAD-001', name:'Minor Conviction Loading', type:'load', priority:15, status:'active', cat:'Driver Quality',
+    desc:'Apply 25% loading for recent minor convictions.',
+    condition:{
+      groups:[{ logic:'AND', rows:[{f:'conviction_count',op:'≥',v:'1'},{f:'conviction_severity',op:'in',v:'Minor, Moderate'},{f:'conviction_years_ago',op:'≤',v:'3'}] }]
+    },
+    out:{ type:'Load', loadType:'Percentage of Net Premium', loadAmt:'25%', authToApply:'Underwriting Manager (auto)',
+          custMsg:'A premium adjustment has been applied based on your driving record.', stacking:'Stackable with other loadings up to max 50% total' },
+    prio:{ exec:'Evaluated after Refer rules', conflict:'Parallel execution' },
+    auth:{ min:'Underwriting Manager', reqRsn:false, audit:'Always' }, audit:[]
+  },
+  { id:'UW-RSTR-001', name:'High-Value — Theft Cover Cap', type:'restrict', priority:20, status:'active', cat:'Cover Limits',
+    desc:'Cap theft cover limit at $55,000.',
+    condition:{
+      groups:[{ logic:'AND', rows:[{f:'insured_value',op:'>',v:'55000'}, {f:'theft_cover_selected',op:'=',v:'true'}] }]
+    },
+    out:{ type:'Restrict Cover', covAff:'Theft & Total Loss', restr:'Cap theft cover limit at $55,000',
+          alt:'Full theft cover available via referral to senior underwriter with additional premium.',
+          custMsg:'Theft cover for this vehicle has a standard limit of $55,000. Contact our team to discuss higher limits.' },
+    prio:{ exec:'Evaluated before Accept rules', conflict:'Parallel execution' },
+    auth:{ min:'Senior Underwriter', reqRsn:true, audit:'Always' }, audit:[]
+  },
+  { id:'UW-ACC-001', name:'Standard Accept', type:'accept', priority:90, status:'active', cat:'Fallback', desc:'Accept if no other rules triggered.' },
+  { id:'UW-ACC-002', name:'Clean Record Preferred Accept', type:'accept', priority:80, status:'active', cat:'Driver Quality', desc:'Accept preferred risks.' }
+];
+
+let activeRuleId = 'UW-DCL-001';
+let openSections = new Set(['identity','condition','outcome','prio','auth','preview']);
+
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label:'PRD-001', href:'product-detail.html?id=PRD-001' },
+    { label:'v2026.04', href:'product-detail.html?id=PRD-001&version=2026.04' },
+    { label:'Underwriting Studio', href:'#' }
+  ]);
+  renderSidebar();
+  loadRule(activeRuleId);
+});
+
+function renderSidebar() {
+  const groups = [
+    { type:'accept', label:'ACCEPT' }, { type:'decline', label:'DECLINE' },
+    { type:'refer', label:'REFER' }, { type:'load', label:'LOAD' },
+    { type:'restrict', label:'RESTRICT' }, { type:'evidence', label:'EVIDENCE' }
+  ];
+  
+  document.getElementById('rule-list').innerHTML = groups.map(g => {
+    const rules = RULES.filter(r=>r.type===g.type).sort((a,b)=>a.priority-b.priority);
+    return `
+      <div class="rule-section">
+        <div class="rule-section-header">
+          <div class="rule-section-label">${g.label} RULES (${rules.length})</div>
+        </div>
+        ${rules.map(r=>`
+          <div class="rule-item ${r.id===activeRuleId?'active':''}" onclick="loadRule('${r.id}')" id="ri-${r.id}">
+            <div class="rule-outcome-badge outcome-${r.type}">${r.type}</div>
+            <div class="rule-item-body">
+              <div class="rule-item-name">${r.name}</div>
+              <div class="rule-item-meta">Priority ${r.priority}</div>
+            </div>
+            <span class="rule-status-icon ${r.status==='active'?'rule-status-active':''}">${r.status==='active'?'✓':'✕'}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
+function loadRule(id) {
+  activeRuleId = id;
+  document.querySelectorAll('.rule-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`ri-${id}`)?.classList.add('active');
+  const rule = RULES.find(r=>r.id===id);
+  if (!rule) return;
+  renderDetail(rule);
+}
+
+function renderDetail(r) {
+  const p = document.getElementById('detail-panel');
+  
+  // Create outcome specifics based on rule type
+  let outcomeContent = '';
+  if (r.type === 'decline' && r.out.reason) {
+    outcomeContent = `
+      <div class="form-grid-2">
+        ${rof('Outcome Type', r.out.type)}
+        ${rof('Reason Code', r.out.reason, true)}
+        ${rof('Decline Category', r.out.cat)}
+        ${rof('Referral Allowed', r.out.refAllow?'Yes':'No')}
+        <div class="form-group span-2"><label class="form-label">Customer Message</label>
+          <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);font-size:13px">"${r.out.custMsg}"</div>
+        </div>
+        <div class="form-group span-2"><label class="form-label">Internal Message</label>
+          <div style="font-size:13px;color:var(--color-muted)">${r.out.intMsg}</div>
+        </div>
+      </div>
+    `;
+  } else if (r.type === 'refer' && r.out.queue) {
+    outcomeContent = `<div class="form-grid-2">
+      ${rof('Outcome Type', r.out.type)}
+      ${rof('Reason Code', r.out.reason, true)}
+      ${rof('Referral Queue', r.out.queue)}
+      ${rof('SLA', r.out.SLA)}
+      <div class="form-group span-2"><label class="form-label">Customer Message</label>
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);font-size:13px">"${r.out.custMsg}"</div>
+      </div>
+    </div>`;
+  } else if (r.type === 'load' && r.out.loadAmt) {
+    outcomeContent = `<div class="form-grid-2">
+      ${rof('Outcome Type', r.out.type)}
+      ${rof('Loading Amount', r.out.loadAmt)}
+      ${rof('Loading Type', r.out.loadType)}
+      ${rof('Stacking', r.out.stacking)}
+    </div>`;
+  } else if (r.type === 'restrict' && r.out.covAff) {
+    outcomeContent = `<div class="form-grid-2">
+      ${rof('Outcome Type', r.out.type)}
+      ${rof('Cover Affected', r.out.covAff)}
+      ${rof('Restriction', r.out.restr)}
+      ${rof('Alternative Offered', r.out.alt)}
+      <div class="form-group span-2"><label class="form-label">Customer Message</label>
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);font-size:13px">"${r.out.custMsg}"</div>
+      </div>
+    </div>`;
+  } else {
+    outcomeContent = `<div class="form-grid-2">${rof('Outcome Type', r.out?r.out.type:r.type.toUpperCase())}</div>`;
+  }
+
+  p.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-2)">
+      <h2 style="font-size:18px;font-weight:700">${r.name}</h2>
+      <span class="rule-outcome-badge outcome-${r.type}">${r.type}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-muted);background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:2px 7px">${r.id}</span>
+      <span class="badge badge-published" style="font-size:10px">ACTIVE</span>
+    </div>
+
+    ${buildSection('identity','1','Rule Identity', `Priority ${r.priority} · ${r.cat}`, `
+      <div class="form-grid-2">
+        ${rof('Rule ID', r.id, true)}
+        ${rof('Rule Name', r.name)}
+        ${rof('Priority', r.priority)}
+        ${rof('Rule Category', r.cat)}
+        <div class="form-group span-2"><label class="form-label">Description</label>
+          <div style="font-size:13px;color:var(--color-muted)">${r.desc}</div>
+        </div>
+      </div>
+    `)}
+
+    ${r.condition ? buildSection('condition','2','Condition Tree', `Evaluates ${r.condition.groups[0].rows.length} conditions`, `
+      <div class="condition-builder">
+        <div class="cb-header">
+          <div class="cb-dir-btn">${r.type} WHEN:</div>
+        </div>
+        ${r.condition.groups.map(g=>`
+          <div class="cb-group">
+            <div class="cb-group-label">GROUP (${g.logic}):</div>
+            ${g.rows.map((row,i)=>`
+              <div class="cb-row">
+                <input type="text" class="form-control" style="flex:1" value="${row.f}" disabled>
+                <input type="text" class="form-control" style="width:100px;text-align:center" value="${row.op}" disabled>
+                <input type="text" class="form-control" style="flex:1" value="${row.v}" disabled>
+              </div>
+              ${i<g.rows.length-1 ? `<div class="cb-logic-connector">${g.logic}</div>`:''}
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `) : ''}
+
+    ${buildSection('outcome','3','Outcome Configuration', r.out?r.out.type:r.type.toUpperCase(), outcomeContent)}
+
+    ${buildSection('prio','4','Priority & Conflict Resolution', `Priority ${r.priority}`, `
+      <div class="form-grid-2">
+        ${rof('Priority', r.priority)}
+        ${rof('Execution Order', r.prio?r.prio.exec:'—')}
+        <div class="form-group span-2">${rof('Conflict Behavior', r.prio?r.prio.conflict:'—')}</div>
+      </div>
+    `)}
+
+    ${buildSection('auth','5','Authority & Override', r.auth?r.auth.min:'—', `
+      <div class="form-grid-2">
+        ${rof('Minimum Authority to Override', r.auth?r.auth.min:'—')}
+        ${rof('Override Reason Required', r.auth?.reqRsn?'Yes':'No')}
+        ${rof('Override Audit Trail', r.auth?r.auth.audit:'—')}
+      </div>
+    `)}
+
+    ${r.audit && r.audit.length ? buildSection('audit','6','Audit Trail', `${r.audit.length} entries`, `
+      <table class="audit-table">
+        <thead><tr><th>Date</th><th>User</th><th>Change</th></tr></thead>
+        <tbody>
+          ${r.audit.map(a=>`<tr><td style="font-family:'IBM Plex Mono',monospace">${a.d}</td><td>${a.u}</td><td>${a.c}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    `) : ''}
+
+    ${buildSection('preview','7','Rule Preview', 'Plain-language summary', `
+      <div class="rule-preview-box">
+        <div class="rp-title">${r.name} (${r.id})</div>
+        <div class="rp-meta">Priority ${r.priority} · Outcome: ${r.type.toUpperCase()} · Active</div>
+        ${r.condition ? `<div class="rp-line"><span class="rp-label">When:</span><span class="rp-value" style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.condition.groups[0].rows.map(x=>`${x.f} ${x.op} ${x.v}`).join(' AND ')}</span></div>` : ''}
+        <div class="rp-line"><span class="rp-label">Then:</span><span class="rp-value">${r.type.charAt(0).toUpperCase()+r.type.slice(1)}</span></div>
+        ${r.out&&r.out.reason ? `<div class="rp-line"><span class="rp-label">Reason code:</span><span class="rp-value" style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.out.reason}</span></div>` : ''}
+      </div>
+    `)}
+  `;
+
+  openSections.forEach(sid => {
+    document.getElementById(`sec-body-${sid}`)?.classList.add('open');
+    document.getElementById(`sec-chev-${sid}`)?.classList.add('open');
+  });
+}
+
+function buildSection(id, num, title, subtitle, content) {
+  const isOpen = openSections.has(id);
+  return `<div class="section-card">
+    <div class="section-header" onclick="toggleSection('${id}')">
+      <div class="section-header-left"><div class="section-number">${num}</div><div><div class="section-title">${title}</div><div class="section-subtitle">${subtitle}</div></div></div>
+      <svg class="section-chevron ${isOpen?'open':''}" id="sec-chev-${id}" width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M181.66 133.66l-80 80a8 8 0 01-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0111.32-11.32l80 80a8 8 0 010 11.32z" fill="currentColor"/></svg>
+    </div>
+    <div class="section-body ${isOpen?'open':''}" id="sec-body-${id}"><div class="section-inner">${content}</div></div>
+  </div>`;
+}
+function toggleSection(id) {
+  const b=document.getElementById(`sec-body-${id}`), c=document.getElementById(`sec-chev-${id}`);
+  const o=b?.classList.contains('open');
+  if(o){b?.classList.remove('open');c?.classList.remove('open');openSections.delete(id);}
+  else{b?.classList.add('open');c?.classList.add('open');openSections.add(id);}
+}
+function rof(label, value, mono=false) {
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <div style="font-size:${mono?'12px':'14px'};font-family:${mono?"'IBM Plex Mono',monospace":'inherit'};color:var(--color-ink);padding:4px 0">${value||'—'}</div>
+  </div>`;
+}
+
+function openDecisionTreeModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Decision Tree View</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="dt-layout">
+        <div class="dt-sidebar">
+          <div style="font-size:12px;font-weight:600;margin-bottom:var(--space-4);color:var(--color-muted);text-transform:uppercase">Execution Order</div>
+          ${RULES.sort((a,b)=>a.priority-b.priority).map(r=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px">
+              <span style="width:20px;height:20px;border-radius:50%;background:var(--color-surface);border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;font-size:10px">${r.priority}</span>
+              <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
+              <span class="rule-outcome-badge outcome-${r.type}" style="height:16px;font-size:9px">${r.type}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="dt-canvas">
+          <div style="padding:8px 16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:100px;font-size:11px;font-weight:700;margin-bottom:30px;position:relative">START
+            <div style="position:absolute;bottom:-31px;left:50%;width:2px;height:30px;background:var(--color-border)"></div>
+          </div>
+          
+          <div class="dt-node">
+            <div class="dt-node-title">Priority 5: Multiple Serious Convictions?</div>
+            <div class="dt-edge"><div class="dt-edge-line"></div><div class="dt-outcome outcome-decline">DECLINE</div></div>
+          </div>
+          <div class="dt-node">
+            <div class="dt-node-title">Priority 6: Vehicle Salvage Status?</div>
+            <div class="dt-edge"><div class="dt-edge-line"></div><div class="dt-outcome outcome-decline">DECLINE</div></div>
+          </div>
+          <div class="dt-node">
+            <div class="dt-node-title">Priority 7: Unlicensed Driver?</div>
+            <div class="dt-edge"><div class="dt-edge-line"></div><div class="dt-outcome outcome-decline">DECLINE</div></div>
+          </div>
+          <div class="dt-node">
+            <div class="dt-node-title">Priority 10: High-Value Vehicle?</div>
+            <div class="dt-edge"><div class="dt-edge-line"></div><div class="dt-outcome outcome-refer">REFER (High Value)</div></div>
+          </div>
+          <div class="dt-node">
+            <div class="dt-node-title">Priority 11: Previous Total Loss?</div>
+            <div class="dt-edge"><div class="dt-edge-line"></div><div class="dt-outcome outcome-refer">REFER (Standard)</div></div>
+          </div>
+          <div class="dt-node">
+            <div class="dt-node-title">Priority 15: Minor Conviction?</div>
+            <div class="dt-edge"><div class="dt-edge-line"></div><div class="dt-outcome outcome-load">LOAD +25%</div></div>
+          </div>
+          <div class="dt-node">
+            <div class="dt-node-title">Priority 20: High-Value Theft Cap?</div>
+            <div class="dt-edge"><div class="dt-edge-line"></div><div class="dt-outcome outcome-restrict">RESTRICT ($55k Cap)</div></div>
+          </div>
+          <div class="dt-node" style="text-align:center;border-color:var(--color-success);background:#DCFCE7;margin-top:20px;padding:var(--space-4)">
+            <div class="dt-node-title" style="color:var(--color-success);margin:0">ACCEPT (Standard)</div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  `, 'modal-xl');
+}
+
+function openTestRulesModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Test Underwriting Rules</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="test-layout">
+        <div class="test-input-panel">
+          <div style="font-size:14px;font-weight:600;margin-bottom:var(--space-4)">Test Risk Inputs</div>
+          <div class="form-group"><label class="form-label">conviction_count</label><input type="number" id="tr-conv-count" class="form-control" value="1"></div>
+          <div class="form-group"><label class="form-label">conviction_severity</label><select class="form-control"><option>Minor</option><option>Moderate</option><option>Serious</option></select></div>
+          <div class="form-group"><label class="form-label">conviction_years_ago</label><input type="number" class="form-control" value="2"></div>
+          <div class="form-group"><label class="form-label">insured_value</label><input type="number" id="tr-value" class="form-control" value="62000"></div>
+          <div class="form-group"><label class="form-label">vehicle_salvage</label><select class="form-control"><option>No</option><option>Yes</option></select></div>
+          <div class="form-group"><label class="form-label">valid_license</label><select class="form-control"><option>Yes</option><option>No</option></select></div>
+          
+          <button class="btn btn-primary" onclick="runTest()" style="width:100%;justify-content:center;margin-top:var(--space-3)">Run Underwriting Engine</button>
+        </div>
+        <div class="test-result-panel" id="test-results">
+          <div style="text-align:center;padding:60px 24px;color:var(--color-muted)">
+            <div style="font-size:28px;margin-bottom:8px">⚖️</div>
+            <div style="font-size:14px;font-weight:500">Enter risk values and run engine</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `, 'modal-lg');
+}
+
+function runTest() {
+  document.getElementById('test-results').innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-5);padding:var(--space-4);border-radius:var(--radius-md);background:#F3E8FF;border:1px solid #C4B5FD">
+      <span style="font-size:24px">👤</span>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#6D28D9">Underwriting Decision: REFER</div>
+        <div style="font-size:13px;color:var(--color-muted)">9 rules evaluated · 2 triggered</div>
+      </div>
+    </div>
+    
+    <div class="test-result-item">
+      <span class="test-icon">✕</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:var(--color-muted)">Multiple Serious Convictions (UW-DCL-001)</div>
+        <div style="font-size:12px;color:var(--color-muted)">NOT TRIGGERED</div>
+      </div>
+    </div>
+    <div class="test-result-item test-trigger">
+      <span class="test-icon">✓</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--color-ink)">High-Value Vehicle (UW-REF-001)</div>
+        <div style="font-size:12px;color:var(--color-brand);margin-top:4px">TRIGGERED → REFER</div>
+        <div style="font-size:12px;color:var(--color-muted);margin-top:2px;font-family:'IBM Plex Mono',monospace">insured_value ($62,000) > 40000</div>
+        <div style="font-size:12px;margin-top:4px"><strong>Queue:</strong> Motor High Value · <strong>Auth:</strong> Senior UW</div>
+      </div>
+    </div>
+    <div class="test-result-item test-trigger" style="border-color:#FCD34D;background:#FEF3C7">
+      <span class="test-icon">✓</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--color-ink)">Minor Conviction Loading (UW-LOAD-001)</div>
+        <div style="font-size:12px;color:var(--color-warning);margin-top:4px">TRIGGERED → LOAD +25%</div>
+        <div style="font-size:12px;color:var(--color-muted);margin-top:2px;font-family:'IBM Plex Mono',monospace">conviction_count = 1, severity = Minor</div>
+      </div>
+    </div>
+    <div class="test-result-item">
+      <span class="test-icon">✕</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:var(--color-muted)">Standard Accept (UW-ACC-001)</div>
+        <div style="font-size:12px;color:var(--color-muted)">WOULD TRIGGER (overridden by REFER)</div>
+      </div>
+    </div>
+    
+    <div style="margin-top:var(--space-4);padding:var(--space-4);background:#fff;border:1px solid var(--color-border);border-radius:var(--radius-md)">
+      <div style="font-size:13px;margin-bottom:4px"><strong>Final Decision:</strong> <span class="rule-outcome-badge outcome-refer">REFER</span> (due to UW-REF-001)</div>
+      <div style="font-size:13px"><strong>Premium Loading Applied:</strong> +25% (UW-LOAD-001)</div>
+    </div>
+  `;
+}
+
+function openAuthorityModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Authority Limits Configuration</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <table class="audit-table">
+        <thead><tr><th>Role</th><th>Max Auto-Accept Premium</th><th>Max Loading Auth</th><th>Can Override Decline</th><th>Can Convert Refer</th></tr></thead>
+        <tbody>
+          <tr><td>Junior Underwriter</td><td>$10,000/yr</td><td>10%</td><td>No</td><td>No</td></tr>
+          <tr><td>Underwriter</td><td>$40,000/yr</td><td>25%</td><td>No</td><td>Yes (with reason)</td></tr>
+          <tr><td>Senior Underwriter</td><td>$100,000/yr</td><td>50%</td><td>Yes (document required)</td><td>Yes</td></tr>
+          <tr><td>UW Manager</td><td>Unlimited</td><td>Unlimited</td><td>Yes</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `);
+}
+
+function openAddUWRuleModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Add Underwriting Rule</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Rule Name <span class="required">*</span></label>
+        <input type="text" class="form-control" id="new-uw-name" placeholder="e.g. High Value Vehicle Referral">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label">Rule ID <span class="required">*</span></label>
+          <input type="text" class="form-control" id="new-uw-id" value="UW-RULE-00${Math.floor(Math.random()*90+10)}" data-system-generated readonly aria-readonly="true" style="font-family:'IBM Plex Mono',monospace">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Outcome <span class="required">*</span></label>
+          <select class="form-control" id="new-uw-outcome">
+            <option value="REFER">REFER (Refer to Underwriter)</option>
+            <option value="DECLINE">DECLINE (Decline Risk)</option>
+            <option value="SUBJECTIVITY">SUBJECTIVITY (Subject To Document)</option>
+            <option value="LOAD">LOAD (Apply Rate Loading)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Evaluation Order / Priority</label>
+        <input type="number" class="form-control" value="10" style="max-width:120px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Condition Summary</label>
+        <input type="text" class="form-control" placeholder="e.g. driver_age < 21 AND convictions > 0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Underwriter Guidance / Decline Message</label>
+        <textarea class="form-control" rows="2" placeholder="Text displayed to underwriter or user if this rule triggers…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="executeAddUWRule()">Create Rule</button>
+    </div>
+  `, 'modal-md');
+}
+
+function executeAddUWRule() {
+  const name = document.getElementById('new-uw-name')?.value.trim() || 'New Rule';
+  const id = document.getElementById('new-uw-id')?.value.trim() || 'UW-RULE-001';
+  PS.closeModal();
+  PS.actionResult('success', 'Rule Created', `Added "${name}" (${id}) to Underwriting Studio draft.`);
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

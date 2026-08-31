@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Studio — Product Studio | VeriDex</title>
+  <meta name="description" content="Manage all policy documents, endorsements, and notices associated with this product version.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Two-panel layout ──────────────────────── */
+    .studio-layout { display: grid; grid-template-columns: 320px 1fr; gap: var(--space-5); align-items: start; }
+
+    /* ── Document list sidebar ─────────────────── */
+    .doc-sidebar { position: sticky; top: calc(56px + var(--space-6)); }
+    .doc-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); }
+    .doc-section { margin-bottom: var(--space-2); }
+    .doc-section-header { padding: var(--space-2) var(--space-3); }
+    .doc-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--color-muted); }
+    
+    .doc-item {
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: 10px var(--space-4);
+      border-radius: var(--radius-md); cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .1s, border-color .1s;
+    }
+    .doc-item:hover { background: var(--color-surface); }
+    .doc-item.active { background: var(--color-brand-light); border-left-color: var(--color-brand); }
+    
+    .doc-icon { flex-shrink: 0; font-size: 16px; margin-top: 2px; }
+    .doc-item-body { flex: 1; min-width: 0; }
+    .doc-item-name { font-size: 13px; font-weight: 500; color: var(--color-ink); }
+    .doc-item.active .doc-item-name { color: var(--color-brand); }
+    .doc-item-meta { font-size: 11px; color: var(--color-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+    
+    .doc-badge {
+      display: inline-flex; height: 16px; padding: 0 4px; border-radius: 3px;
+      font-size: 9px; font-weight: 700; align-items: center; text-transform: uppercase;
+      background: var(--color-surface); color: var(--color-muted); border: 1px solid var(--color-border);
+    }
+    
+    .doc-status-icon { flex-shrink: 0; font-size: 12px; margin-top: 2px; }
+    .status-approved { color: var(--color-success); }
+    .status-pending  { color: var(--color-warning); }
+    .status-flagged  { color: var(--color-danger); }
+
+    /* ── Section card ──────────────────────────── */
+    .section-card { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); cursor: pointer; user-select: none; transition: background .1s; }
+    .section-header:hover { background: var(--color-surface); }
+    .section-header-left { display: flex; align-items: center; gap: var(--space-3); }
+    .section-number { width: 24px; height: 24px; border-radius: 50%; background: var(--color-brand-light); color: var(--color-brand); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .section-title { font-size: 14px; font-weight: 600; }
+    .section-subtitle { font-size: 12px; color: var(--color-muted); margin-top: 1px; }
+    .section-chevron { color: var(--color-muted); transition: transform .2s; }
+    .section-chevron.open { transform: rotate(90deg); }
+    .section-body { border-top: 1px solid var(--color-border); max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .section-body.open { max-height: 2000px; overflow: visible; }
+    .section-inner { padding: var(--space-5) var(--space-6); }
+
+    /* ── Form grids ────────────────────────────── */
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-6); }
+    .span-2 { grid-column: 1 / -1; }
+
+    /* ── Data Tables ───────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .table-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
+
+    /* ── Condition builder (from Eligibility) ──── */
+    .condition-builder { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .cb-header {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    }
+    .cb-dir-btn {
+      padding: 4px 12px; border: 1px solid var(--color-brand); border-radius: var(--radius-md); font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .3px; background: var(--color-brand-light); color: var(--color-brand);
+    }
+    .cb-group { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+    .cb-group:last-child { border-bottom: none; }
+    .cb-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+    .cb-row select, .cb-row input { height: 32px; font-size: 13px; }
+
+    /* ── Context bar ───────────────────────────── */
+    .studio-context-bar {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); margin-bottom: var(--space-5); font-size: 13px;
+    }
+    .studio-context-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; background: var(--color-panel);
+      border: 1px solid var(--color-border); border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+    }
+
+    /* ── Modal specific ────────────────────────── */
+    .doc-lib-filters { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); }
+    .doc-preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-4); }
+    .doc-preview-card { border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; background: #fff; }
+    .doc-preview-thumb { height: 180px; background: #E2E8F0; display: flex; align-items: center; justify-content: center; position: relative; border-bottom: 1px solid var(--color-border); }
+    .doc-preview-thumb::after { content: 'DRAFT PREVIEW'; position: absolute; transform: rotate(-30deg); font-size: 24px; font-weight: 800; color: rgba(0,0,0,0.1); white-space: nowrap; }
+    .doc-preview-info { padding: var(--space-3); }
+  </style>
+</head>
+<body class="studio-page">
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Document Studio</h1>
+          <p class="page-subtitle">Private Car Comprehensive · v2026.04 — 7 documents configured</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="openPreviewModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M216 40H40a16 16 0 00-16 16v144a16 16 0 0016 16h176a16 16 0 0016-16V56a16 16 0 00-16-16zM40 56h176v144H40zM128 176a32 32 0 10-32-32 32 32 0 0032 32z" fill="currentColor"/></svg>
+            Preview Pack
+          </button>
+          <button class="btn btn-ghost" onclick="openLibraryModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M208 40H48a16 16 0 00-16 16v144a16 16 0 0016 16h160a16 16 0 0016-16V56a16 16 0 00-16-16zm-8 160H56V56h144zM88 104h80v16H88zm0 40h80v16H88z" fill="currentColor"/></svg>
+            Document Library
+          </button>
+          <button class="btn btn-primary" onclick="openLibraryModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+            Associate Document
+          </button>
+        </div>
+      </div>
+
+      <div class="studio-context-bar">
+        <span class="studio-context-pill">
+          <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+          PRD-001 · v2026.04
+        </span>
+        <span style="color:var(--color-muted)">·</span>
+        <span>3 core &nbsp;·&nbsp; 2 endorsements &nbsp;·&nbsp; 2 notices &nbsp;·&nbsp; 0 compliance flags</span>
+        <div style="margin-left:auto"><a href="product-detail.html?id=PRD-001#studios" class="btn btn-ghost btn-sm">← Back to Product</a></div>
+      </div>
+
+      <div class="published-only-banner" style="background:var(--color-brand-light);border:1px solid rgba(26,79,138,.2);border-radius:var(--radius-md);padding:var(--space-3) var(--space-5);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--color-brand);margin-bottom:var(--space-5)">
+        <span>📌 This version is <strong>Published</strong> — document associations are read-only.</span>
+        <button class="btn btn-primary btn-sm" onclick="PS.actionResult('info','Clone','Clone this version from Product Detail.')">Clone Version to Edit</button>
+      </div>
+
+      <div class="studio-layout">
+        <!-- LEFT: Document List -->
+        <div class="doc-sidebar">
+          <div class="card">
+            <div class="card-header" style="padding:var(--space-4) var(--space-5)">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted)">Documents</div>
+            </div>
+            <div class="doc-list" id="doc-list"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Detail Panel -->
+        <div id="detail-panel" style="display:flex;flex-direction:column;gap:var(--space-4)"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+const DOCUMENTS = [
+  { id:'DOC-SCH-001', name:'Policy Schedule Template', type:'Core', icon:'📄', ver:'v2026.04', status:'approved',
+    identity:{ type:'Core — Policy Schedule', format:'PDF (dynamic fields)', lang:'English (UK)', jur:'India, UAE', author:'David Okonkwo' },
+    trigger:{ when:'Policy Issued / Policy Endorsed / Policy Renewed', auto:true, del:'Email + Portal', copies:'Policyholder (1) + Broker (1)', reGen:'Yes — full schedule reissued' },
+    cond:{ always:true },
+    vars:[
+      { tok:'{{policy_number}}', src:'Policy System', ex:'POL-2026-00421' },
+      { tok:'{{insured_name}}', src:'Policyholder record', ex:'Vikram Sinha' },
+      { tok:'{{vehicle_make_model}}', src:'Risk data', ex:'Toyota Fortuner' },
+      { tok:'{{total_premium}}', src:'Rating', ex:'$394.04' }
+    ],
+    comp:{ req:true, rev:'David Okonkwo (Compliance/Legal)', d:'22-Mar-2026', notes:'Updated jurisdiction clause for UAE. Compliant with CBUAE Motor Insurance Regulations 2025.', legal:true, ref:'CBUAE Circular No. 39/2025', hist:'v2026.04: UAE clause update' },
+    covers:[
+      { c:'Own Damage', r:'Financial terms (SI, deductible)' },
+      { c:'Third Party Liability', r:'Policy limit displayed' }
+    ]
+  },
+  { id:'DOC-CERT-001', name:'Certificate of Insurance', type:'Core', icon:'📜', ver:'v2026.03', status:'approved' },
+  { id:'DOC-WORD-001', name:'Policy Wording — Motor Comp.', type:'Core', icon:'📖', ver:'v2026.04', status:'approved' },
+  { id:'DOC-END-001', name:'General Exclusions Endorsement', type:'Endorsement', icon:'📎', ver:'v2026.01', status:'approved' },
+  { id:'DOC-END-002', name:'Roadside Assistance Add-On', type:'Endorsement', icon:'🚗', ver:'v2026.04', status:'approved',
+    identity:{ type:'Endorsement', format:'PDF (static + dynamic)', lang:'English (UK)', jur:'India, UAE', author:'Sarah Chen' },
+    trigger:{ when:'Policy Issued', auto:true, del:'Appended to Wording', copies:'Policyholder (1)', reGen:'No' },
+    cond:{ always:false, logic:[{f:'covers_selected', op:'includes', v:'Roadside Assistance'}] },
+    vars:[{ tok:'{{policy_number}}', src:'Policy System', ex:'POL-2026-00421' }],
+    comp:{ req:true, rev:'Compliance Team', d:'15-Feb-2026', notes:'Standard T&C for roadside.', legal:true, ref:'None', hist:'v2026.04: Initial' },
+    covers:[{ c:'Roadside Assistance', r:'Full terms and conditions provided' }]
+  },
+  { id:'DOC-NOT-001', name:'Welcome Letter Template', type:'Notice', icon:'✉️', ver:'v2026.01', status:'approved' },
+  { id:'DOC-NOT-002', name:'Renewal Notice Template', type:'Notice', icon:'⏱️', ver:'v2025.12', status:'pending',
+    identity:{ type:'Notice', format:'Email / PDF', lang:'English (UK)', jur:'India, UAE', author:'Marketing Team' },
+    trigger:{ when:'30 days prior to renewal', auto:true, del:'Email', copies:'Policyholder (1)', reGen:'No' },
+    cond:{ always:true },
+    vars:[],
+    comp:{ req:true, rev:'Pending', d:'—', notes:'Requires review for new UAE renewal regulations.', legal:false, ref:'—', hist:'v2025.12: Minor copy tweaks' },
+    covers:[]
+  }
+];
+
+let activeDocId = 'DOC-SCH-001';
+let openSections = new Set(['identity','trigger','cond','vars','comp','covers']);
+
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label:'PRD-001', href:'product-detail.html?id=PRD-001' },
+    { label:'v2026.04', href:'product-detail.html?id=PRD-001&version=2026.04' },
+    { label:'Document Studio', href:'#' }
+  ]);
+  renderSidebar();
+  loadDocument(activeDocId);
+});
+
+function renderSidebar() {
+  const groups = ['Core', 'Endorsement', 'Notice'];
+  
+  document.getElementById('doc-list').innerHTML = groups.map(g => {
+    const docs = DOCUMENTS.filter(d=>d.type===g);
+    if (!docs.length) return '';
+    return `
+      <div class="doc-section">
+        <div class="doc-section-header">
+          <div class="doc-section-label">${g.toUpperCase()}S</div>
+        </div>
+        ${docs.map(d=>`
+          <div class="doc-item ${d.id===activeDocId?'active':''}" onclick="loadDocument('${d.id}')" id="di-${d.id}">
+            <div class="doc-icon">${d.icon}</div>
+            <div class="doc-item-body">
+              <div class="doc-item-name">${d.name}</div>
+              <div class="doc-item-meta"><span class="doc-badge">${d.type}</span> ${d.ver}</div>
+            </div>
+            <span class="doc-status-icon status-${d.status}">${d.status==='approved'?'✓':d.status==='pending'?'⚠':'✕'}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
+function loadDocument(id) {
+  activeDocId = id;
+  document.querySelectorAll('.doc-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`di-${id}`)?.classList.add('active');
+  const doc = DOCUMENTS.find(d=>d.id===id);
+  // Using dummy data if missing full details
+  if (!doc.identity) Object.assign(doc, DOCUMENTS[0], { id:doc.id, name:doc.name, type:doc.type, icon:doc.icon, ver:doc.ver, status:doc.status, comp:doc.comp||DOCUMENTS[0].comp });
+  renderDetail(doc);
+}
+
+function renderDetail(d) {
+  const p = document.getElementById('detail-panel');
+  
+  p.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-2)">
+      <h2 style="font-size:18px;font-weight:700"><span style="margin-right:8px">${d.icon}</span>${d.name}</h2>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-muted);background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:2px 7px">${d.id}</span>
+      <span class="badge badge-${d.status==='approved'?'published':d.status==='pending'?'draft':'archived'}" style="font-size:10px">${d.status.toUpperCase()}</span>
+      <span style="font-size:12px;font-weight:600;color:var(--color-brand);margin-left:auto">${d.ver}</span>
+    </div>
+
+    ${buildSection('identity','1','Document Identity', d.identity.type, `
+      <div class="form-grid-2">
+        ${rof('Document Name', d.name)}
+        ${rof('Document ID', d.id, true)}
+        ${rof('Document Type', d.identity.type)}
+        ${rof('Template Format', d.identity.format)}
+        ${rof('Language', d.identity.lang)}
+        ${rof('Jurisdiction Applicability', d.identity.jur)}
+        ${rof('Author', d.identity.author)}
+        ${rof('Legal/Compliance Approved', d.identity.legal?`Yes — ${d.comp.d}`:'No')}
+      </div>
+    `)}
+
+    ${buildSection('trigger','2','Generation Trigger', d.trigger.when, `
+      <div class="form-grid-2">
+        <div class="form-group span-2">${rof('Generate When', d.trigger.when)}</div>
+        ${rof('Triggered Automatically?', d.trigger.auto?'Yes':'No')}
+        ${rof('Delivery Method', d.trigger.del)}
+        ${rof('Copies', d.trigger.copies)}
+        ${rof('Re-generation on Endorsement', d.trigger.reGen)}
+      </div>
+    `)}
+
+    ${buildSection('cond','3','Conditional Logic', d.cond.always ? 'Always Included' : 'Conditional', `
+      ${d.cond.always ? 
+        `<div style="font-size:13px;color:var(--color-ink);background:var(--color-surface);padding:12px;border-radius:var(--radius-md);border:1px solid var(--color-border)"><strong>Always Included:</strong> This document is generated for every policy instance.</div>` :
+        `<div class="condition-builder">
+          <div class="cb-header"><div class="cb-dir-btn">INCLUDE WHEN:</div></div>
+          <div class="cb-group">
+            ${d.cond.logic.map(row=>`
+              <div class="cb-row">
+                <input type="text" class="form-control" style="flex:1" value="${row.f}" disabled>
+                <input type="text" class="form-control" style="width:100px;text-align:center" value="${row.op}" disabled>
+                <input type="text" class="form-control" style="flex:1" value="${row.v}" disabled>
+              </div>
+            `).join('')}
+          </div>
+        </div>`
+      }
+    `)}
+
+    ${buildSection('vars','4','Template Variables', `${d.vars.length} merge fields`, `
+      <table class="data-table">
+        <thead><tr><th>Variable Token</th><th>Source</th><th>Example Value</th></tr></thead>
+        <tbody>
+          ${d.vars.map(v=>`<tr>
+            <td style="font-family:'IBM Plex Mono',monospace;color:var(--color-brand)">${v.tok}</td>
+            <td>${v.src}</td>
+            <td style="color:var(--color-muted)">${v.ex}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    `)}
+
+    ${buildSection('comp','5','Approval & Compliance', d.status==='approved'?'Approved':'Pending', `
+      <div class="form-grid-2">
+        ${rof('Compliance Review Required?', d.comp.req?'Yes':'No')}
+        ${rof('Reviewed By', d.comp.rev)}
+        ${rof('Review Date', d.comp.d)}
+        ${rof('Legal Sign-Off', d.comp.legal?'Yes':'No')}
+        ${rof('FCA / Regulatory Reference', d.comp.ref)}
+        <div class="form-group span-2"><label class="form-label">Compliance Notes</label>
+          <div style="font-size:13px;color:var(--color-ink)">${d.comp.notes}</div>
+        </div>
+      </div>
+    `)}
+
+    ${buildSection('covers','6','Linked Covers', `${d.covers.length} references`, `
+      <table class="data-table">
+        <thead><tr><th>Cover</th><th>Reference Type</th></tr></thead>
+        <tbody>
+          ${d.covers.map(c=>`<tr><td><strong>${c.c}</strong></td><td>${c.r}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    `)}
+  `;
+
+  openSections.forEach(sid => {
+    document.getElementById(`sec-body-${sid}`)?.classList.add('open');
+    document.getElementById(`sec-chev-${sid}`)?.classList.add('open');
+  });
+}
+
+function buildSection(id, num, title, subtitle, content) {
+  const isOpen = openSections.has(id);
+  return `<div class="section-card">
+    <div class="section-header" onclick="toggleSection('${id}')">
+      <div class="section-header-left"><div class="section-number">${num}</div><div><div class="section-title">${title}</div><div class="section-subtitle">${subtitle}</div></div></div>
+      <svg class="section-chevron ${isOpen?'open':''}" id="sec-chev-${id}" width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M181.66 133.66l-80 80a8 8 0 01-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0111.32-11.32l80 80a8 8 0 010 11.32z" fill="currentColor"/></svg>
+    </div>
+    <div class="section-body ${isOpen?'open':''}" id="sec-body-${id}"><div class="section-inner">${content}</div></div>
+  </div>`;
+}
+function toggleSection(id) {
+  const b=document.getElementById(`sec-body-${id}`), c=document.getElementById(`sec-chev-${id}`);
+  const o=b?.classList.contains('open');
+  if(o){b?.classList.remove('open');c?.classList.remove('open');openSections.delete(id);}
+  else{b?.classList.add('open');c?.classList.add('open');openSections.add(id);}
+}
+function rof(label, value, mono=false) {
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <div style="font-size:${mono?'12px':'14px'};font-family:${mono?"'IBM Plex Mono',monospace":'inherit'};color:var(--color-ink);padding:4px 0">${value||'—'}</div>
+  </div>`;
+}
+
+function openLibraryModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Global Document Library</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div style="padding:var(--space-4) var(--space-5)">
+        <div class="doc-lib-filters">
+          <input type="text" class="form-control" placeholder="Search templates..." style="flex:1">
+          <select class="form-control"><option>All Types</option><option>Core</option><option>Endorsement</option><option>Notice</option></select>
+          <select class="form-control"><option>Line of Business: All</option>${PS.data.productFamilies.map(family => `<option>${family}</option>`).join('')}</select>
+        </div>
+        <table class="data-table">
+          <thead><tr><th></th><th>Document</th><th>Type</th><th>LOB</th><th>Version</th><th>Last Updated</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td><strong>Motor Comprehensive — Policy Wording (EN)</strong></td>
+              <td><span class="doc-badge">CORE</span></td><td>Motor</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">v2026.04</td><td>Aug 2026</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td><strong>Fire & Allied Perils — Policy Wording (EN)</strong></td>
+              <td><span class="doc-badge">CORE</span></td><td>Property</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">v2026.01</td><td>Jan 2026</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td><strong>General Exclusions — Standard (EN)</strong></td>
+              <td><span class="doc-badge">ENDORSEMENT</span></td><td>All</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">v2026.01</td><td>Jan 2026</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="associateDocuments()">Associate Selected</button>
+    </div>
+  `, 'modal-lg');
+}
+
+function openPreviewModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Preview Document Pack</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:var(--space-4)">
+        <label class="form-label">Select Test Risk Profile (for dummy data injection)</label>
+        <select class="form-control" style="max-width:300px">
+          <option>Standard Risk Profile (Vikram Sinha)</option>
+          <option>High Value Risk Profile</option>
+          <option>Young Driver Profile</option>
+        </select>
+      </div>
+      
+      <div style="padding:16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:var(--space-4)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Documents to generate:</div>
+        <div style="display:flex;gap:16px;font-size:13px">
+          <label><input type="checkbox" checked> Policy Schedule</label>
+          <label><input type="checkbox" checked> Certificate of Insurance</label>
+          <label><input type="checkbox" checked> Policy Wording</label>
+          <label><input type="checkbox" checked> Endorsements (if applicable)</label>
+        </div>
+        <button class="btn btn-primary btn-sm" style="margin-top:16px">Generate Previews</button>
+      </div>
+
+      <div class="doc-preview-grid">
+        <div class="doc-preview-card">
+          <div class="doc-preview-thumb">
+            <svg width="48" height="48" viewBox="0 0 256 256" fill="none" style="opacity:0.2"><path d="M216 40H40a16 16 0 00-16 16v144a16 16 0 0016 16h176a16 16 0 0016-16V56a16 16 0 00-16-16z" fill="currentColor"/></svg>
+          </div>
+          <div class="doc-preview-info">
+            <div style="font-size:13px;font-weight:600">Policy Schedule.pdf</div>
+            <div style="font-size:11px;color:var(--color-muted);margin-top:2px">1.2 MB · Generated just now</div>
+          </div>
+        </div>
+        <div class="doc-preview-card">
+          <div class="doc-preview-thumb">
+            <svg width="48" height="48" viewBox="0 0 256 256" fill="none" style="opacity:0.2"><path d="M216 40H40a16 16 0 00-16 16v144a16 16 0 0016 16h176a16 16 0 0016-16V56a16 16 0 00-16-16z" fill="currentColor"/></svg>
+          </div>
+          <div class="doc-preview-info">
+            <div style="font-size:13px;font-weight:600">Policy Wording.pdf</div>
+            <div style="font-size:11px;color:var(--color-muted);margin-top:2px">4.5 MB · Generated just now</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+      <button class="btn btn-primary" onclick="PS.actionResult('info','Download','Downloading preview ZIP pack...')">Download All as ZIP</button>
+    </div>
+  `, 'modal-lg');
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

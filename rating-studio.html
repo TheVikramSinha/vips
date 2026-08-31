@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rating &amp; Pricing Studio — Product Studio | VeriDex</title>
+  <meta name="description" content="Configure premium calculations — base rates, risk factors, rate tables, loadings, discounts, fees, taxes, and the premium formula.">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/rating-experience.css">
+  <style>
+    .studio-layout { display: grid; grid-template-columns: 280px 1fr; gap: var(--space-5); align-items: start; }
+
+    /* ── Component Tree ────────────────────────── */
+    .comp-sidebar { position: sticky; top: calc(56px + var(--space-6)); }
+    .comp-group { margin-bottom: var(--space-1); }
+    .comp-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--color-muted);
+      padding: var(--space-3) var(--space-4) var(--space-1);
+    }
+    .comp-item {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: 8px var(--space-4) 8px calc(var(--space-4) + 10px);
+      border-radius: var(--radius-md); cursor: pointer;
+      border-left: 3px solid transparent; transition: background .1s, border-color .1s;
+    }
+    .comp-item:hover { background: var(--color-surface); }
+    .comp-item.active { background: var(--color-brand-light); border-left-color: var(--color-brand); }
+    .comp-item-name { font-size: 13px; font-weight: 500; flex: 1; color: var(--color-ink); }
+    .comp-item.active .comp-item-name { color: var(--color-brand); }
+    .comp-item-value { font-size: 11px; font-family:'IBM Plex Mono',monospace; color: var(--color-muted); }
+    .comp-item-status { flex-shrink: 0; font-size: 12px; }
+    .comp-formula-btn {
+      width: calc(100% - var(--space-4)); margin: var(--space-2) var(--space-2);
+      display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+      padding: 8px; font-size: 12px; font-weight: 600; color: var(--color-brand);
+      background: var(--color-brand-light); border: 1px dashed var(--color-brand);
+      border-radius: var(--radius-md); cursor: pointer; transition: all .15s;
+    }
+    .comp-formula-btn:hover { background: var(--color-brand); color: #fff; }
+
+    /* ── Section card ──────────────────────────── */
+    .section-card { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); cursor: pointer; user-select: none; transition: background .1s; }
+    .section-header:hover { background: var(--color-surface); }
+    .section-header-left { display: flex; align-items: center; gap: var(--space-3); }
+    .section-number { width: 24px; height: 24px; border-radius: 50%; background: var(--color-brand-light); color: var(--color-brand); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .section-title { font-size: 14px; font-weight: 600; }
+    .section-subtitle { font-size: 12px; color: var(--color-muted); margin-top: 1px; }
+    .section-chevron { color: var(--color-muted); transition: transform .2s; }
+    .section-chevron.open { transform: rotate(90deg); }
+    .section-body { border-top: 1px solid var(--color-border); max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .section-body.open { max-height: 3000px; }
+    .section-inner { padding: var(--space-5) var(--space-6); }
+
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-6); }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4); }
+    .span-2 { grid-column: 1 / -1; }
+
+    /* ── Type badge ────────────────────────────── */
+    .type-badge {
+      display: inline-flex; height: 22px; padding: 0 10px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .3px; align-items: center;
+      text-transform: uppercase;
+    }
+    .type-base     { background: #EBF1FA; color: var(--color-brand); }
+    .type-factor   { background: #F3E8FF; color: #7C3AED; }
+    .type-loading  { background: #FEF3C7; color: var(--color-warning); }
+    .type-discount { background: #DCFCE7; color: var(--color-success); }
+    .type-fee      { background: #F1F5F9; color: var(--color-muted); }
+    .type-tax      { background: #FEE2E2; color: var(--color-danger); }
+
+    /* ── Rate table ────────────────────────────── */
+    .rate-table { width: 100%; border-collapse: collapse; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+    .rate-table th {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+      color: var(--color-muted); padding: var(--space-2) var(--space-3); text-align: left;
+      background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    }
+    .rate-table td {
+      padding: var(--space-2) var(--space-3); font-size: 13px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .rate-table tr:last-child td { border-bottom: none; }
+    .rate-table tr:hover td { background: #FAFBFF; }
+    .rate-table .rate-cell {
+      font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+      text-align: right; font-weight: 500; color: var(--color-ink);
+    }
+    .rate-table th.rate-cell { text-align: right; }
+    .rate-table .rate-band { font-weight: 500; }
+    .rate-table .rate-notes { font-size: 12px; color: var(--color-muted); }
+
+    /* 2D rate table */
+    .rate-2d { overflow-x: auto; }
+    .rate-2d table { min-width: 500px; }
+    .rate-2d th.col-header {
+      text-align: center; font-size: 12px; font-weight: 600;
+      background: var(--color-brand-light); color: var(--color-brand);
+    }
+    .rate-2d td.row-header {
+      font-weight: 600; background: var(--color-surface);
+      white-space: nowrap; border-right: 1px solid var(--color-border);
+    }
+    .rate-2d td.cell {
+      text-align: center; font-family: 'IBM Plex Mono',monospace; font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* ── Formula editor ────────────────────────── */
+    .formula-editor {
+      background: #F8FAFC; border-radius: var(--radius-lg);
+      overflow: hidden; border: 1px solid var(--color-border);
+    }
+    .formula-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-2) var(--space-4);
+      background: #F1F5F9; border-bottom: 1px solid var(--color-border);
+    }
+    .formula-toolbar-label { font-size: 11px; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: .5px; }
+    .formula-code {
+      padding: var(--space-5); font-family: 'IBM Plex Mono',monospace;
+      font-size: 12px; line-height: 1.8; color: var(--color-ink); overflow-x: auto;
+      white-space: pre;
+    }
+    .f-keyword { color: #0369A1; }
+    .f-ref     { color: #A16207; }
+    .f-num     { color: #15803D; }
+    .f-op      { color: #C2410C; }
+    .f-comment { color: #64748B; }
+    .f-cond    { color: #BE185D; }
+    .formula-status {
+      padding: var(--space-3) var(--space-4);
+      background: #F1F5F9; border-top: 1px solid var(--color-border);
+      font-size: 12px; color: var(--color-success); display: flex; align-items: center; gap: var(--space-2);
+    }
+
+    /* ── Premium breakdown ─────────────────────── */
+    .breakdown { font-family: 'IBM Plex Mono',monospace; font-size: 13px; line-height: 2; }
+    .breakdown-group { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--color-muted); margin-top: var(--space-4); }
+    .breakdown-row { display: flex; justify-content: space-between; padding: 0 var(--space-2); }
+    .breakdown-row:hover { background: var(--color-surface); border-radius: var(--radius-sm); }
+    .breakdown-label { color: var(--color-ink); }
+    .breakdown-value { font-weight: 600; }
+    .breakdown-factor { color: var(--color-brand); }
+    .breakdown-sep { border-top: 1px dashed var(--color-border); margin: var(--space-2) 0; }
+    .breakdown-total { font-weight: 700; font-size: 15px; }
+    .breakdown-note { font-size: 11px; color: var(--color-muted); font-family: inherit; }
+
+    /* ── Context / Studio bar ──────────────────── */
+    .studio-context-bar {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); margin-bottom: var(--space-5); font-size: 13px;
+    }
+    .studio-context-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; background: var(--color-panel);
+      border: 1px solid var(--color-border); border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+    }
+
+    /* ── Cap config ────────────────────────────── */
+    .cap-row {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); margin-bottom: var(--space-2); font-size: 13px;
+    }
+  </style>
+</head>
+<body class="studio-page">
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Rating & Pricing Studio</h1>
+          <p class="page-subtitle">Private Car Comprehensive · v2026.04 — 12 rating components · 1 premium formula · $394 est. annual premium</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="openFormulaModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M200 40H168a16 16 0 00-16 16v36.29L72.45 40.12a8 8 0 00-9.78 1.22 8.2 8.2 0 00-.32 11l76.69 84.59L62.66 213.66a8 8 0 0011.32 11.32l80-80.01L220.34 66.34a8 8 0 000-11.31L200 40z" fill="currentColor"/></svg>
+            Edit Formula
+          </button>
+          <button class="btn btn-secondary" onclick="openPremiumTestModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M221.69 199.77L160 96.92V40h8a8 8 0 000-16H88a8 8 0 000 16h8v56.92L34.31 199.77A16 16 0 0048 224h160a16 16 0 0013.69-24.23z" fill="currentColor"/></svg>
+            Run Premium Test
+          </button>
+          <div class="dropdown" id="add-comp-dd">
+            <button class="btn btn-primary" onclick="toggleDD('add-comp-menu')">
+              <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+              Add Component
+            </button>
+            <div class="dropdown-menu hidden" id="add-comp-menu">
+              <div class="dropdown-item" onclick="openAddComponentModal('Base Rate')">Add Base Rate</div>
+              <div class="dropdown-item" onclick="openAddComponentModal('Factor (Rate Table)')">Add Factor (Rate Table)</div>
+              <div class="dropdown-item" onclick="openAddComponentModal('Loading')">Add Loading</div>
+              <div class="dropdown-item" onclick="openAddComponentModal('Discount')">Add Discount</div>
+              <div class="dropdown-sep"></div>
+              <div class="dropdown-item" onclick="openAddComponentModal('Fee')">Add Fee</div>
+              <div class="dropdown-item" onclick="openAddComponentModal('Tax')">Add Tax</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="studio-context-bar">
+        <span class="studio-context-pill">
+          <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+          PRD-001 · v2026.04
+        </span>
+        <span style="color:var(--color-muted)">·</span>
+        <span>12 components &nbsp;·&nbsp; 5 factors &nbsp;·&nbsp; 3 discounts &nbsp;·&nbsp; 3 fees/taxes</span>
+        <div style="margin-left:auto"><a href="product-detail.html?id=PRD-001#studios" class="btn btn-ghost btn-sm">← Back to Product</a></div>
+      </div>
+
+      <div class="published-only-banner" style="background:var(--color-brand-light);border:1px solid rgba(26,79,138,.2);border-radius:var(--radius-md);padding:var(--space-3) var(--space-5);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--color-brand);margin-bottom:var(--space-5)">
+        <span>📌 Published version — rates are read-only. Only Pricing Actuaries may clone to modify.</span>
+        <button class="btn btn-primary btn-sm" onclick="PS.actionResult('info','Clone','Clone this version from Product Detail.')">Clone Version to Edit</button>
+      </div>
+
+      <div class="studio-layout">
+        <!-- LEFT: Component Tree -->
+        <div class="comp-sidebar">
+          <div class="card">
+            <div class="card-header" style="padding:var(--space-4) var(--space-5)">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted)">Components</div>
+            </div>
+            <div style="padding:var(--space-2)" id="comp-tree"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Detail Panel -->
+        <div id="detail-panel" style="display:flex;flex-direction:column;gap:var(--space-4)"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="responsive-warning" role="status">Insurance Product Studio is optimized for desktop screens (1280px and wider).</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+/* ═══════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════ */
+const COMPONENTS = [
+  { group:'BASE PREMIUM', items:[
+    { id:'RAT-BR-001', name:'Base Rate', value:'$350/yr', status:'done', type:'base',
+      basis:'Annual Rate — Fixed Amount', amount:'350.00', currency:'USD', cover:'Own Damage (primary)',
+      notes:'Base rate validated by actuarial review, 18-Mar-2026. References Q1 2026 loss ratio analysis.',
+      effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026' }
+  ]},
+  { group:'RISK FACTORS', items:[
+    { id:'RAT-FAC-001', name:'Driver Age Factor', value:'table', status:'done', type:'factor',
+      factorType:'Rate Table Lookup', lookupAttr:'driver_age', dims:'1D',
+      table1D:[
+        { band:'21–25', mult:'1.45', note:'Young driver loading' },
+        { band:'26–30', mult:'1.25', note:'' },
+        { band:'31–40', mult:'1.00', note:'Base rate band' },
+        { band:'41–50', mult:'0.95', note:'Experienced driver discount' },
+        { band:'51–60', mult:'1.05', note:'' },
+        { band:'61–70', mult:'1.15', note:'' },
+        { band:'71+',   mult:'1.40', note:'' }
+      ]},
+    { id:'RAT-FAC-002', name:'Vehicle Age Factor', value:'table', status:'done', type:'factor',
+      factorType:'Rate Table Lookup', lookupAttr:'vehicle_age', dims:'1D',
+      table1D:[
+        { band:'0–3', mult:'1.10', note:'New vehicle' },
+        { band:'4–7', mult:'0.95', note:'' },
+        { band:'8–12', mult:'1.05', note:'' },
+        { band:'13–15', mult:'1.20', note:'' }
+      ]},
+    { id:'RAT-FAC-003', name:'Territory Factor', value:'2D table', status:'done', type:'factor',
+      factorType:'Rate Table Lookup', lookupAttr:'territory_zone × vehicle_use', dims:'2D',
+      table2D:{
+        cols:['Private','Commercial Light','Hire'],
+        rows:[
+          { label:'Zone A (Metro)',   vals:['1.20','1.40','1.80'] },
+          { label:'Zone B (Urban)',   vals:['1.10','1.30','1.65'] },
+          { label:'Zone C (Suburban)',vals:['1.00','1.20','1.50'] },
+          { label:'Zone D (Rural)',   vals:['0.90','1.10','1.40'] },
+          { label:'Zone E (Remote)',  vals:['1.05','1.25','1.55'] }
+        ]
+      }},
+    { id:'RAT-FAC-004', name:'Vehicle Use Factor', value:'table', status:'done', type:'factor',
+      factorType:'Rate Table Lookup', lookupAttr:'purpose_of_use', dims:'1D',
+      table1D:[
+        { band:'Private', mult:'1.00', note:'' },
+        { band:'Commercial Light', mult:'1.25', note:'' },
+        { band:'Hire', mult:'1.60', note:'' }
+      ]},
+    { id:'RAT-FAC-005', name:'Claims History Factor', value:'table', status:'done', type:'factor',
+      factorType:'Rate Table Lookup', lookupAttr:'claims_count_3yr', dims:'1D',
+      table1D:[
+        { band:'0 claims', mult:'0.70', note:'Clean record' },
+        { band:'1 claim',  mult:'0.90', note:'' },
+        { band:'2 claims', mult:'1.10', note:'' },
+        { band:'3+ claims',mult:'1.40', note:'High risk' }
+      ]}
+  ]},
+  { group:'LOADINGS', items:[
+    { id:'RAT-LOAD-001', name:'Conviction Loading', value:'+15%', status:'done', type:'loading',
+      loadingType:'Percentage', loadingValue:'15', condition:'conviction_history = Yes' },
+    { id:'RAT-LOAD-002', name:'High-Value Vehicle', value:'+$50', status:'done', type:'loading',
+      loadingType:'Fixed Amount', loadingValue:'50', condition:'insured_value > $40,000' }
+  ]},
+  { group:'DISCOUNTS', items:[
+    { id:'RAT-DISC-001', name:'No Claims Discount', value:'up to 50%', status:'done', type:'discount',
+      discountType:'Percentage', lookupAttr:'claims_free_years',
+      table1D:[
+        { band:'0 years', mult:'0%', note:'' },
+        { band:'1 year',  mult:'10%', note:'' },
+        { band:'2 years', mult:'20%', note:'' },
+        { band:'3 years', mult:'30%', note:'' },
+        { band:'4 years', mult:'40%', note:'' },
+        { band:'5+ years',mult:'50%', note:'' }
+      ],
+      maxThis:'50%', maxCombined:'55%', overrideAuth:'Underwriting Manager', stacking:'Stackable' },
+    { id:'RAT-DISC-002', name:'Loyalty Discount', value:'5%', status:'done', type:'discount',
+      discountType:'Percentage', discountValue:'5', condition:'renewal_count >= 1' },
+    { id:'RAT-DISC-003', name:'Multi-Policy Discount', value:'3%', status:'done', type:'discount',
+      discountType:'Percentage', discountValue:'3', condition:'active_policies >= 2' }
+  ]},
+  { group:'FEES & TAXES', items:[
+    { id:'RAT-FEE-001', name:'Policy Admin Fee', value:'$25', status:'done', type:'fee',
+      feeType:'Fixed Amount', feeAmount:'25.00', taxInclusive:false, appliesPer:'Policy', refundable:'Pro-rata', excludeCommission:true },
+    { id:'RAT-TAX-001', name:'Stamp Duty', value:'$5', status:'done', type:'tax',
+      taxType:'Fixed Amount', taxRate:'5.00', jurisdiction:'India' },
+    { id:'RAT-TAX-002', name:'GST / VAT', value:'18%', status:'done', type:'tax',
+      taxType:'Percentage of Net Premium', taxRate:'18', jurisdiction:'India', taxCode:'TAX-GST-IN',
+      regRef:'CGST Act 2017', appliesTo:'Net premium + loadings (excludes fees)' }
+  ]}
+];
+
+let activeCompId = 'RAT-BR-001';
+let openSections = new Set(['identity','config','table','notes']);
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label:'PRD-001', href:'product-detail.html?id=PRD-001' },
+    { label:'v2026.04', href:'product-detail.html?id=PRD-001&version=2026.04' },
+    { label:'Rating & Pricing Studio', href:'#' }
+  ]);
+  renderTree();
+  loadComponent(activeCompId);
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.dropdown') && !e.target.closest('[onclick*="toggleDD"]'))
+      document.querySelectorAll('.dropdown-menu').forEach(m=>m.classList.add('hidden'));
+  });
+});
+
+function toggleDD(id) { const m=document.getElementById(id); if(!m)return; const h=m.classList.contains('hidden'); document.querySelectorAll('.dropdown-menu').forEach(x=>x.classList.add('hidden')); if(h)m.classList.remove('hidden'); }
+
+/* ═══════════════════════════════════════════════
+   COMPONENT TREE
+═══════════════════════════════════════════════ */
+function renderTree() {
+  const tree = document.getElementById('comp-tree');
+  tree.innerHTML = COMPONENTS.map(g => `
+    <div class="comp-group">
+      <div class="comp-group-label">${g.group}</div>
+      ${g.items.map(c => `
+      <div class="comp-item ${c.id===activeCompId?'active':''}" onclick="loadComponent('${c.id}')" id="citem-${c.id}">
+        <span class="comp-item-name">${c.name}</span>
+        <span class="comp-item-value">${c.value}</span>
+        <span class="comp-item-status" style="color:var(--color-success)">✓</span>
+      </div>`).join('')}
+    </div>
+  `).join('') + `
+    <div class="comp-formula-btn" onclick="openFormulaModal()">ƒ Premium Formula</div>
+  `;
+}
+
+/* ═══════════════════════════════════════════════
+   LOAD COMPONENT
+═══════════════════════════════════════════════ */
+function loadComponent(id) {
+  activeCompId = id;
+  document.querySelectorAll('.comp-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`citem-${id}`)?.classList.add('active');
+  const comp = COMPONENTS.flatMap(g=>g.items).find(c=>c.id===id);
+  if (!comp) return;
+  renderDetail(comp);
+}
+
+function renderDetail(c) {
+  const panel = document.getElementById('detail-panel');
+  const typeCls = `type-${c.type}`;
+  const typeLabel = {base:'BASE RATE',factor:'FACTOR — RATE TABLE',loading:'LOADING',discount:'DISCOUNT',fee:'FEE',tax:'TAX'}[c.type];
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-2)">
+      <h2 style="font-size:18px;font-weight:700">${c.name}</h2>
+      <span class="type-badge ${typeCls}">${typeLabel}${c.dims==='2D'?' 2D':''}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-muted);background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:2px 7px">${c.id}</span>
+    </div>
+
+    ${buildSection('identity','1','Component Identity', `${c.name} · ${c.id}`, renderIdentity(c))}
+
+    ${c.type==='base' ? buildSection('config','2','Rate Configuration', `${c.basis} · $${c.amount}`, renderBaseConfig(c)) : ''}
+    ${c.type==='factor' ? buildSection('table','2','Rate Table', `${c.dims} · ${c.lookupAttr}`, renderFactorTable(c)) : ''}
+    ${c.type==='loading' ? buildSection('config','2','Loading Configuration', `${c.loadingType} · ${c.loadingValue}${c.loadingType==='Percentage'?'%':''}`, renderLoadingConfig(c)) : ''}
+    ${c.type==='discount' ? buildSection('table','2','Discount Table', c.table1D ? `${c.table1D.length} bands` : `${c.discountType} · ${c.discountValue}%`, renderDiscountConfig(c)) : ''}
+    ${c.type==='fee' ? buildSection('config','2','Fee Configuration', `${c.feeType} · $${c.feeAmount}`, renderFeeConfig(c)) : ''}
+    ${c.type==='tax' ? buildSection('config','2','Tax Configuration', `${c.taxType} · ${c.taxRate}${c.taxType.includes('Percentage')?'%':''}`, renderTaxConfig(c)) : ''}
+
+    ${c.notes ? buildSection('notes','3','Notes & Audit', 'Actuarial review notes', `
+      <p style="font-size:13px;color:var(--color-muted);line-height:20px">${c.notes}</p>
+    `) : ''}
+  `;
+
+  openSections.forEach(id => {
+    document.getElementById(`sec-body-${id}`)?.classList.add('open');
+    document.getElementById(`sec-chev-${id}`)?.classList.add('open');
+  });
+}
+
+function renderIdentity(c) {
+  return `<div class="form-grid-2">
+    ${rof('Component Name', c.name)}
+    ${rof('Component Code', c.id, true)}
+    ${c.effectiveFrom ? rof('Effective From', c.effectiveFrom) : ''}
+    ${c.effectiveTo   ? rof('Effective To', c.effectiveTo) : ''}
+    ${c.cover ? `<div class="form-group span-2">${rof('Cover Applicability', c.cover)}</div>` : ''}
+  </div>`;
+}
+
+function renderBaseConfig(c) {
+  return `<div class="form-grid-2">
+    ${rof('Basis', c.basis)}
+    <div class="form-group"><label class="form-label">Base Rate Value</label>
+      <div style="font-size:22px;font-weight:700;color:var(--color-brand);padding:4px 0">$${c.amount}</div>
+    </div>
+    ${rof('Currency', c.currency)}
+  </div>`;
+}
+
+function renderFactorTable(c) {
+  if (c.dims==='2D' && c.table2D) {
+    return `<div class="form-grid-2" style="margin-bottom:var(--space-4)">
+      ${rof('Factor Type', c.factorType)}
+      ${rof('Lookup Attributes', c.lookupAttr)}
+      ${rof('Dimensions', c.dims)}
+    </div>
+    <div class="rate-2d">
+      <table class="rate-table">
+        <thead><tr>
+          <th>Territory ↓ / Use →</th>
+          ${c.table2D.cols.map(col=>`<th class="col-header">${col}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${c.table2D.rows.map(r=>`<tr>
+            <td class="row-header">${r.label}</td>
+            ${r.vals.map(v=>`<td class="cell">${v}</td>`).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4)">
+      <button class="btn btn-ghost btn-sm" disabled>+ Add Row</button>
+      <button class="btn btn-ghost btn-sm" disabled>+ Add Column</button>
+      <div style="margin-left:auto;display:flex;gap:var(--space-3)">
+        <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Export','Downloading rate table CSV…')">Download CSV</button>
+        <button class="btn btn-ghost btn-sm" disabled>Import CSV</button>
+      </div>
+    </div>`;
+  }
+  // 1D table
+  return `<div class="form-grid-3" style="margin-bottom:var(--space-4)">
+    ${rof('Factor Type', c.factorType)}
+    ${rof('Lookup Attribute', c.lookupAttr)}
+    ${rof('Dimensions', c.dims)}
+  </div>
+  <table class="rate-table">
+    <thead><tr>
+      <th style="width:40%">Band</th>
+      <th class="rate-cell" style="width:30%">Multiplier</th>
+      <th style="width:30%">Notes</th>
+    </tr></thead>
+    <tbody>
+      ${c.table1D.map(r=>`<tr>
+        <td class="rate-band">${r.band}</td>
+        <td class="rate-cell">${r.mult}</td>
+        <td class="rate-notes">${r.note}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4)">
+    <button class="btn btn-ghost btn-sm" disabled>+ Add Row</button>
+    <div style="margin-left:auto;display:flex;gap:var(--space-3)">
+      <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Export','Downloading rate table CSV…')">Download CSV</button>
+      <button class="btn btn-ghost btn-sm" disabled>Import CSV</button>
+    </div>
+  </div>`;
+}
+
+function renderLoadingConfig(c) {
+  return `<div class="form-grid-2">
+    ${rof('Loading Type', c.loadingType)}
+    <div class="form-group"><label class="form-label">Loading Value</label>
+      <div style="font-size:18px;font-weight:700;color:var(--color-warning);padding:4px 0">${c.loadingType==='Percentage'?c.loadingValue+'%':'$'+c.loadingValue}</div>
+    </div>
+    <div class="form-group span-2">
+      <label class="form-label">Condition</label>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);color:var(--color-brand)">${c.condition}</div>
+    </div>
+  </div>`;
+}
+
+function renderDiscountConfig(c) {
+  let html = '';
+  if (c.table1D) {
+    html += `<div class="form-grid-2" style="margin-bottom:var(--space-4)">
+      ${rof('Discount Type', c.discountType)}
+      ${rof('Lookup Attribute', c.lookupAttr)}
+      ${rof('Stacking', c.stacking||'—')}
+    </div>
+    <table class="rate-table">
+      <thead><tr><th>Band</th><th class="rate-cell">Discount</th></tr></thead>
+      <tbody>${c.table1D.map(r=>`<tr><td class="rate-band">${r.band}</td><td class="rate-cell" style="color:var(--color-success)">${r.mult}</td></tr>`).join('')}</tbody>
+    </table>`;
+    if (c.maxThis) {
+      html += `<div style="margin-top:var(--space-5);font-size:13px;font-weight:600;margin-bottom:var(--space-3)">Cap Configuration</div>
+      <div class="cap-row"><span style="flex:1">Maximum discount (this component)</span><strong>${c.maxThis}</strong></div>
+      <div class="cap-row"><span style="flex:1">Maximum combined discount (all)</span><strong>${c.maxCombined}</strong></div>
+      <div class="cap-row"><span style="flex:1">Override authority</span><strong>${c.overrideAuth}</strong></div>`;
+    }
+  } else {
+    html += `<div class="form-grid-2">
+      ${rof('Discount Type', c.discountType)}
+      <div class="form-group"><label class="form-label">Discount Value</label>
+        <div style="font-size:18px;font-weight:700;color:var(--color-success);padding:4px 0">${c.discountValue}%</div>
+      </div>
+      <div class="form-group span-2"><label class="form-label">Condition</label>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);color:var(--color-brand)">${c.condition||'—'}</div>
+      </div>
+    </div>`;
+  }
+  return html;
+}
+
+function renderFeeConfig(c) {
+  return `<div class="form-grid-2">
+    ${rof('Fee Type', c.feeType)}
+    <div class="form-group"><label class="form-label">Amount</label>
+      <div style="font-size:18px;font-weight:700;color:var(--color-ink);padding:4px 0">$${c.feeAmount}</div>
+    </div>
+    ${rof('Tax Inclusive', c.taxInclusive ? 'Yes' : 'No')}
+    ${rof('Applies Per', c.appliesPer)}
+    ${rof('Refundable on Cancellation', c.refundable)}
+    ${rof('Excluded from Commission Base', c.excludeCommission ? 'Yes' : 'No')}
+  </div>`;
+}
+
+function renderTaxConfig(c) {
+  return `<div class="form-grid-2">
+    ${rof('Tax Type', c.taxType)}
+    <div class="form-group"><label class="form-label">Rate</label>
+      <div style="font-size:18px;font-weight:700;color:var(--color-danger);padding:4px 0">${c.taxRate}${c.taxType.includes('Percentage')?'%':''}</div>
+    </div>
+    ${rof('Jurisdiction', c.jurisdiction)}
+    ${c.taxCode ? rof('Tax Code', c.taxCode, true) : ''}
+    ${c.regRef  ? rof('Regulatory Reference', c.regRef) : ''}
+    ${c.appliesTo ? `<div class="form-group span-2">${rof('Applies To', c.appliesTo)}</div>` : ''}
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════ */
+function buildSection(id, num, title, subtitle, content) {
+  const isOpen = openSections.has(id);
+  return `<div class="section-card">
+    <div class="section-header" onclick="toggleSection('${id}')">
+      <div class="section-header-left"><div class="section-number">${num}</div><div><div class="section-title">${title}</div><div class="section-subtitle">${subtitle}</div></div></div>
+      <svg class="section-chevron ${isOpen?'open':''}" id="sec-chev-${id}" width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M181.66 133.66l-80 80a8 8 0 01-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0111.32-11.32l80 80a8 8 0 010 11.32z" fill="currentColor"/></svg>
+    </div>
+    <div class="section-body ${isOpen?'open':''}" id="sec-body-${id}"><div class="section-inner">${content}</div></div>
+  </div>`;
+}
+function toggleSection(id) {
+  const b=document.getElementById(`sec-body-${id}`), c=document.getElementById(`sec-chev-${id}`);
+  const o=b?.classList.contains('open');
+  if(o){b?.classList.remove('open');c?.classList.remove('open');openSections.delete(id);}
+  else{b?.classList.add('open');c?.classList.add('open');openSections.add(id);}
+}
+function rof(label, value, mono=false) {
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <div style="font-size:${mono?'12px':'14px'};font-family:${mono?"'IBM Plex Mono',monospace":'inherit'};color:var(--color-ink);padding:4px 0">${value||'—'}</div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   FORMULA MODAL
+═══════════════════════════════════════════════ */
+function openFormulaModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Premium Formula</h2>
+      <div style="display:flex;gap:var(--space-3);margin-left:auto;margin-right:var(--space-4)">
+        <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('success','Valid','Formula is valid. All 12 component references resolved.')">Validate</button>
+        <button class="btn btn-secondary btn-sm" onclick="openPremiumTestModal();PS.closeModal()">Test Formula</button>
+      </div>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="formula-editor">
+        <div class="formula-toolbar">
+          <span class="formula-toolbar-label">PRD-001 · v2026.04 · Premium Formula</span>
+        </div>
+        <div class="formula-code"><span class="f-comment">// Cover premium calculations</span>
+<span class="f-keyword">COVER_OWN_DAMAGE</span> <span class="f-op">=</span>
+    (<span class="f-ref">BASE_RATE</span>)
+    <span class="f-op">×</span> (<span class="f-ref">DRIVER_AGE_FACTOR</span>)
+    <span class="f-op">×</span> (<span class="f-ref">VEHICLE_AGE_FACTOR</span>)
+    <span class="f-op">×</span> (<span class="f-ref">TERRITORY_FACTOR</span>)
+    <span class="f-op">×</span> (<span class="f-ref">VEHICLE_USE_FACTOR</span>)
+    <span class="f-op">×</span> (<span class="f-ref">CLAIMS_HISTORY_FACTOR</span>)
+    <span class="f-op">+</span> (<span class="f-ref">CONVICTION_LOADING</span> <span class="f-cond">if</span> conviction <span class="f-op">=</span> <span class="f-num">true</span> <span class="f-cond">else</span> <span class="f-num">0</span>)
+    <span class="f-op">+</span> (<span class="f-ref">HIGH_VALUE_LOADING</span> <span class="f-cond">if</span> insured_value <span class="f-op">></span> <span class="f-num">40000</span> <span class="f-cond">else</span> <span class="f-num">0</span>)
+    <span class="f-op">-</span> (<span class="f-ref">NO_CLAIMS_DISCOUNT</span>)
+    <span class="f-op">-</span> (<span class="f-ref">LOYALTY_DISCOUNT</span>)
+    <span class="f-op">-</span> (<span class="f-ref">MULTI_POLICY_DISCOUNT</span>)
+
+<span class="f-keyword">COVER_THIRD_PARTY</span> <span class="f-op">=</span> <span class="f-num">0.30</span> <span class="f-op">×</span> <span class="f-ref">COVER_OWN_DAMAGE</span>
+<span class="f-keyword">COVER_PERSONAL_ACCIDENT</span> <span class="f-op">=</span> <span class="f-ref">FLAT_RATE_PA</span>
+<span class="f-keyword">COVER_THEFT</span> <span class="f-op">=</span> <span class="f-num">0.15</span> <span class="f-op">×</span> <span class="f-ref">COVER_OWN_DAMAGE</span>
+<span class="f-keyword">ADD_ON_ROADSIDE</span> <span class="f-op">=</span> <span class="f-ref">FLAT_RATE_ROADSIDE</span> (<span class="f-cond">if selected</span>)
+<span class="f-keyword">ADD_ON_WINDSCREEN</span> <span class="f-op">=</span> <span class="f-ref">FLAT_RATE_WINDSCREEN</span> (<span class="f-cond">if selected</span>)
+
+<span class="f-comment">// Aggregate premium</span>
+<span class="f-keyword">NET_PREMIUM</span> <span class="f-op">=</span>
+    <span class="f-ref">COVER_OWN_DAMAGE</span> <span class="f-op">+</span> <span class="f-ref">COVER_THIRD_PARTY</span> <span class="f-op">+</span> <span class="f-ref">COVER_PERSONAL_ACCIDENT</span>
+    <span class="f-op">+</span> <span class="f-ref">COVER_THEFT</span> <span class="f-op">+</span> <span class="f-ref">ADD_ON_ROADSIDE</span> <span class="f-op">+</span> <span class="f-ref">ADD_ON_WINDSCREEN</span>
+
+<span class="f-keyword">GROSS_PREMIUM</span> <span class="f-op">=</span> <span class="f-keyword">MAX</span>(
+    <span class="f-ref">NET_PREMIUM</span> <span class="f-op">+</span> <span class="f-ref">POLICY_ADMIN_FEE</span> <span class="f-op">+</span> <span class="f-ref">STAMP_DUTY</span>,
+    <span class="f-ref">MINIMUM_PREMIUM_FLOOR</span>
+)
+
+<span class="f-keyword">PAYABLE_PREMIUM</span> <span class="f-op">=</span> <span class="f-ref">GROSS_PREMIUM</span> <span class="f-op">+</span> (<span class="f-ref">GROSS_PREMIUM</span> <span class="f-op">×</span> <span class="f-ref">GST_RATE</span>)</div>
+        <div class="formula-status">✓ Formula is valid. All 12 component references resolved.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `, 'modal-lg');
+}
+
+/* ═══════════════════════════════════════════════
+   PREMIUM TEST MODAL
+═══════════════════════════════════════════════ */
+function openPremiumTestModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Premium Test — Risk Profile</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:500px">
+        <!-- Input panel -->
+        <div style="padding:var(--space-5);border-right:1px solid var(--color-border)">
+          <div style="font-size:14px;font-weight:600;margin-bottom:var(--space-4)">Test Risk Inputs</div>
+          <div class="form-group"><label class="form-label">driver_age</label><input type="number" id="pt-age" class="form-control" value="35"></div>
+          <div class="form-group"><label class="form-label">vehicle_age (years)</label><input type="number" id="pt-vage" class="form-control" value="5"></div>
+          <div class="form-group"><label class="form-label">territory_zone</label>
+            <select id="pt-zone" class="form-control"><option>Zone B (Urban)</option><option>Zone A (Metro)</option><option>Zone C (Suburban)</option><option>Zone D (Rural)</option><option>Zone E (Remote)</option></select></div>
+          <div class="form-group"><label class="form-label">vehicle_use</label>
+            <select id="pt-use" class="form-control"><option>Private</option><option>Commercial Light</option><option>Hire</option></select></div>
+          <div class="form-group"><label class="form-label">claims_free_years</label><input type="number" id="pt-ncd" class="form-control" value="3"></div>
+          <div class="form-group"><label class="form-label">insured_value</label><input type="number" id="pt-si" class="form-control" value="28000"></div>
+          <div class="form-group"><label class="form-label">conviction_history</label>
+            <select id="pt-conv" class="form-control"><option>No</option><option>Yes</option></select></div>
+          <button class="btn btn-primary" onclick="runPremiumCalc()" style="width:100%;justify-content:center;margin-top:var(--space-3)">Run Premium Calculation</button>
+        </div>
+        <!-- Result panel -->
+        <div style="padding:var(--space-5);overflow-y:auto" id="premium-result">
+          <div style="text-align:center;padding:60px 24px;color:var(--color-muted)">
+            <div style="font-size:28px;margin-bottom:8px">💰</div>
+            <div style="font-size:14px;font-weight:500">Enter risk values and run calculation</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="PS.actionResult('info','Saved','Test case saved.')">Save as Test Case</button>
+      <button class="btn btn-ghost" onclick="PS.actionResult('info','Export','Downloading breakdown PDF…')">Export PDF</button>
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `, 'modal-lg');
+}
+
+function runPremiumCalc() {
+  const age    = parseInt(document.getElementById('pt-age')?.value||35);
+  const vAge   = parseInt(document.getElementById('pt-vage')?.value||5);
+  const ncd    = parseInt(document.getElementById('pt-ncd')?.value||3);
+  const si     = parseInt(document.getElementById('pt-si')?.value||28000);
+  const conv   = document.getElementById('pt-conv')?.value==='Yes';
+
+  // Lookup factors
+  const ageFactor  = age<=25?1.45:age<=30?1.25:age<=40?1.00:age<=50?0.95:age<=60?1.05:age<=70?1.15:1.40;
+  const vAgeFactor = vAge<=3?1.10:vAge<=7?0.95:vAge<=12?1.05:1.20;
+  const terrFactor = 1.10; // Zone B / Private
+  const useFactor  = 1.00; // Private
+  const claimsFactor = 0.70; // Clean
+
+  const baseRate   = 350;
+  const odPremium  = baseRate * ageFactor * vAgeFactor * terrFactor * useFactor * claimsFactor;
+  const convLoad   = conv ? odPremium * 0.15 : 0;
+  const hvLoad     = si > 40000 ? 50 : 0;
+  const ncdPct     = ncd>=5?50:ncd*10;
+  const ncdDiscount= odPremium * (ncdPct/100);
+
+  const odNet      = odPremium + convLoad + hvLoad - ncdDiscount;
+  const tpPremium  = odNet * 0.30;
+  const paPremium  = 45;
+  const theftPrem  = odNet * 0.15;
+  const netPremium = odNet + tpPremium + paPremium + theftPrem;
+  const adminFee   = 25;
+  const stampDuty  = 5;
+  const gross      = netPremium + adminFee + stampDuty;
+  const gst        = gross * 0.18;
+  const payable    = gross + gst;
+
+  const f = (n) => n.toFixed(2);
+
+  document.getElementById('premium-result').innerHTML = `
+    <div style="background:var(--color-brand-light);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);margin-bottom:var(--space-5);text-align:center">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--color-brand);font-weight:600;margin-bottom:4px">Payable Premium</div>
+      <div style="font-size:32px;font-weight:800;color:var(--color-brand);font-family:'IBM Plex Mono',monospace">$${f(payable)}</div>
+      <div style="font-size:12px;color:var(--color-muted);margin-top:4px">Annual · Monthly: $${f(payable/12)} ×12</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-group">Base Premium</div>
+      <div class="breakdown-row"><span class="breakdown-label">Base Rate</span><span class="breakdown-value">$${f(baseRate)}</span></div>
+
+      <div class="breakdown-group">Risk Factors Applied</div>
+      <div class="breakdown-row"><span class="breakdown-label">Driver Age (${age} → band)</span><span class="breakdown-factor">× ${ageFactor.toFixed(2)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Vehicle Age (${vAge} yrs)</span><span class="breakdown-factor">× ${vAgeFactor.toFixed(2)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Territory (Zone B / Prv)</span><span class="breakdown-factor">× ${terrFactor.toFixed(2)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Vehicle Use (Private)</span><span class="breakdown-factor">× ${useFactor.toFixed(2)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Claims Hx (clean)</span><span class="breakdown-factor">× ${claimsFactor.toFixed(2)}</span></div>
+
+      <div class="breakdown-group">Cover Premiums</div>
+      <div class="breakdown-row"><span class="breakdown-label">Own Damage</span><span class="breakdown-value">$${f(odNet)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Third Party (30%)</span><span class="breakdown-value">$${f(tpPremium)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Personal Accident (Flat)</span><span class="breakdown-value">$${f(paPremium)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Theft (15%)</span><span class="breakdown-value">$${f(theftPrem)}</span></div>
+      <div class="breakdown-sep"></div>
+      <div class="breakdown-row"><span class="breakdown-label"><strong>Net Premium</strong></span><span class="breakdown-value">$${f(netPremium)}</span></div>
+
+      <div class="breakdown-group">Discounts</div>
+      <div class="breakdown-row"><span class="breakdown-label">No Claims Discount (${ncdPct}%)</span><span class="breakdown-value" style="color:var(--color-success)">-$${f(ncdDiscount)}</span></div>
+      ${convLoad>0?`<div class="breakdown-group">Loadings</div>
+      <div class="breakdown-row"><span class="breakdown-label">Conviction Loading</span><span class="breakdown-value" style="color:var(--color-warning)">+$${f(convLoad)}</span></div>`:''}
+
+      <div class="breakdown-group">Fees</div>
+      <div class="breakdown-row"><span class="breakdown-label">Policy Admin Fee</span><span class="breakdown-value">$${f(adminFee)}</span></div>
+      <div class="breakdown-row"><span class="breakdown-label">Stamp Duty</span><span class="breakdown-value">$${f(stampDuty)}</span></div>
+
+      <div class="breakdown-group">Taxes</div>
+      <div class="breakdown-row"><span class="breakdown-label">GST at 18%</span><span class="breakdown-value" style="color:var(--color-danger)">$${f(gst)}</span></div>
+      <div class="breakdown-sep"></div>
+      <div class="breakdown-row breakdown-total"><span class="breakdown-label">PAYABLE PREMIUM</span><span class="breakdown-value" style="color:var(--color-brand)">$${f(payable)}</span></div>
+    </div>
+  `;
+}
+
+function openAddComponentModal(compType) {
+  document.querySelectorAll('.dropdown-menu').forEach(m=>m.classList.add('hidden'));
+  const type = compType || 'Base Rate';
+  const isBase = type.includes('Base');
+  const isFactor = type.includes('Factor');
+  const isDiscount = type.includes('Discount');
+  const isLoading = type.includes('Loading');
+  const isFee = type.includes('Fee');
+  const isTax = type.includes('Tax');
+
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Add ${type} Component</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Component Name <span class="required">*</span></label>
+        <input type="text" class="form-control" id="new-comp-name" placeholder="e.g. ${isBase ? 'Base Premium Rate' : isFactor ? 'Driver Experience Factor' : isDiscount ? 'Loyalty Discount' : isLoading ? 'Adverse History Loading' : isFee ? 'Administration Fee' : 'State Tax'}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label">Component ID <span class="required">*</span></label>
+          <input type="text" class="form-control" id="new-comp-id" value="RAT-${isBase?'BR':isFactor?'FAC':isDiscount?'DSC':isLoading?'LDG':isFee?'FEE':'TAX'}-00${Math.floor(Math.random()*90+10)}" data-system-generated readonly aria-readonly="true" style="font-family:'IBM Plex Mono',monospace">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Applies To Cover</label>
+          <select class="form-control" id="new-comp-cover">
+            <option>All Covers (Policy Level)</option>
+            <option>Own Damage (COV-OD)</option>
+            <option>Third Party (COV-TP)</option>
+            <option>Personal Accident (COV-PA)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Calculation Type</label>
+        <select class="form-control" id="new-comp-calc">
+          <option ${isFactor?'selected':''}>Rate Table Matrix (Multiplicative Factor)</option>
+          <option ${isBase?'selected':''}>Fixed Amount ($ flat currency)</option>
+          <option ${isDiscount||isLoading?'selected':''}>Percentage of Base Premium (%)</option>
+          <option ${isFee||isTax?'selected':''}>Flat Fee ($ per policy)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Default Value / Multiplier</label>
+        <input type="text" class="form-control" id="new-comp-val" value="${isBase?'350.00':isFactor?'1.00':isDiscount?'10%':isLoading?'15%':'25.00'}" style="font-family:'IBM Plex Mono',monospace">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description / Underwriting Rationale</label>
+        <textarea class="form-control" rows="2" placeholder="Explain how and when this component applies…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="executeAddComponent('${type}')">Add Component</button>
+    </div>
+  `, 'modal-md');
+}
+
+function executeAddComponent(type) {
+  const name = document.getElementById('new-comp-name')?.value.trim() || type;
+  const id = document.getElementById('new-comp-id')?.value.trim() || 'RAT-COMP-001';
+  PS.closeModal();
+  PS.actionResult('success', 'Component Added', `Added "${name}" (${id}) to Rating Studio draft.`);
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+<script src="assets/central-pricing-store.js"></script>
+<script src="assets/rating-experience.js"></script>
+</body>
+</html>

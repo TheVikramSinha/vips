@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulation &amp; Testing — Product Studio | VeriDex</title>
+  <meta name="description" content="Validate the complete product configuration against representative risk scenarios before publication.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Tabs ──────────────────────────────────── */
+    .tabs-nav {
+      display: flex; gap: var(--space-5); border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5);
+    }
+    .tab-btn {
+      padding: var(--space-3) 0; font-size: 14px; font-weight: 500; color: var(--color-muted);
+      border-bottom: 2px solid transparent; cursor: pointer; user-select: none;
+      transition: color .2s, border-color .2s;
+    }
+    .tab-btn:hover { color: var(--color-ink); }
+    .tab-btn.active { color: var(--color-brand); border-bottom-color: var(--color-brand); font-weight: 600; }
+    
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Progress Bar ──────────────────────────── */
+    .progress-bar-wrap { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+    .progress-header { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; }
+    .progress-track { width: 100%; height: 8px; background: var(--color-disabled); border-radius: 4px; overflow: hidden; position: relative; }
+    .progress-fill { height: 100%; background: var(--color-success); width: 100%; transition: width .3s; }
+    .progress-fill.running { background: var(--color-brand); }
+    .progress-footer { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--color-muted); font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── Data Tables ───────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+    .data-table th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .data-table td { padding: 12px 12px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .status-badge.pass { background: #DCFCE7; color: var(--color-success); }
+    .status-badge.fail { background: #FEE2E2; color: var(--color-danger); }
+    .status-badge.skip { background: var(--color-surface); color: var(--color-muted); }
+    
+    .row-expandable { cursor: pointer; transition: background .1s; }
+    .row-expandable:hover { background: #F8FAFF; }
+    
+    .detail-drawer { display: none; background: #FAFBFF; padding: var(--space-5); border-bottom: 1px solid var(--color-border); }
+    .detail-drawer.open { display: block; }
+    .drawer-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-5); }
+    .drawer-box { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); }
+    .drawer-title { font-size: 11px; font-weight: 700; color: var(--color-muted); text-transform: uppercase; margin-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); padding-bottom: 6px; }
+
+    /* ── Individual Run ────────────────────────── */
+    .run-layout { display: grid; grid-template-columns: 350px 1fr; gap: var(--space-5); }
+    .run-panel { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); }
+    .run-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
+    .form-grid { display: grid; gap: var(--space-3); }
+
+    /* ── Context bar ───────────────────────────── */
+    .studio-context-bar {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); margin-bottom: var(--space-5); font-size: 13px;
+    }
+    .studio-context-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; background: var(--color-panel);
+      border: 1px solid var(--color-border); border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+    }
+    
+    /* ── Rule Trace ────────────────────────────── */
+    .rule-trace { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--color-muted); background: #F8FAFC; border:1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); overflow-x: auto; margin-top: var(--space-3); }
+    .rule-trace-line { display: flex; gap: var(--space-3); margin-bottom: 4px; }
+    .trace-time { color: #64748B; }
+    .trace-msg { color: var(--color-ink); }
+    .trace-pass { color: var(--color-success); font-weight: 700; }
+    .trace-head { color: #0369A1; font-weight: 700; }
+    .simulation-shell { max-width: 1500px; margin: 0 auto; }
+    .simulation-hero { position: relative; overflow: hidden; padding: 20px 22px; border: 1px solid #b9cbe5; border-radius: 14px; background: linear-gradient(120deg,#f7faff 0%,#eef5ff 55%,#f7fbf8 100%); box-shadow: 0 10px 30px rgba(31,72,124,.08); margin-bottom: 16px; }
+    .simulation-hero::after { content:""; position:absolute; width:220px; height:220px; right:-80px; top:-110px; border-radius:50%; background:rgba(31,79,138,.08); }
+    .simulation-hero .studio-context-bar { position:relative; z-index:1; margin:0; padding:0; border:0; background:transparent; }
+    .sim-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    .sim-metric { padding:15px 16px; border:1px solid var(--color-border); border-radius:11px; background:#fff; box-shadow:0 4px 16px rgba(15,23,42,.04); transition:transform .18s,box-shadow .18s; }
+    .sim-metric:hover { transform:translateY(-2px); box-shadow:0 9px 24px rgba(31,72,124,.10); }
+    .sim-metric-label { font-size:10px; font-weight:800; letter-spacing:.55px; text-transform:uppercase; color:var(--color-muted); }
+    .sim-metric-value { margin-top:5px; font-size:24px; font-weight:750; color:var(--color-ink); }
+    .sim-metric-value.good { color:var(--color-success); }
+    .sim-metric-copy { margin-top:2px; font-size:11px; color:var(--color-muted); }
+    .tabs-nav { position:sticky; top:56px; z-index:20; gap:5px; padding:5px; border:1px solid var(--color-border); border-radius:10px; background:rgba(255,255,255,.94); box-shadow:0 5px 18px rgba(15,23,42,.05); backdrop-filter:blur(10px); }
+    .tab-btn { appearance:none; border:0; border-radius:7px; padding:9px 14px; background:transparent; }
+    .tab-btn.active { border:0; background:var(--color-brand); color:#fff; box-shadow:0 4px 12px rgba(31,79,138,.22); }
+    .tab-pane.active { animation:simFade .2s ease-out; }
+    @keyframes simFade { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+    .progress-bar-wrap,.run-panel,.data-table { box-shadow:0 5px 18px rgba(15,23,42,.05); }
+    .progress-track { height:10px; background:#e8edf4; }
+    .progress-fill { background:linear-gradient(90deg,#15803d,#22c55e); }
+    .progress-fill.running { background:linear-gradient(90deg,#1a4f8a,#60a5fa,#1a4f8a); background-size:200% 100%; animation:progressMove 1s linear infinite; }
+    @keyframes progressMove { to{background-position:-200% 0} }
+    .suite-toolbar { display:flex; align-items:center; gap:10px; padding:12px; margin-bottom:12px; border:1px solid var(--color-border); border-radius:10px; background:#fff; }
+    .suite-search { position:relative; flex:1; max-width:380px; }
+    .suite-search span { position:absolute; left:11px; top:8px; color:var(--color-muted); }
+    .suite-search input { padding-left:33px; }
+    .data-table tbody tr.row-expandable { transition:background .15s; }
+    .data-table tbody tr.row-expandable:hover { background:#f4f8fd; }
+    .test-name { display:flex;align-items:center;gap:9px; }
+    .test-icon { display:grid;place-items:center;width:27px;height:27px;border-radius:8px;background:var(--color-brand-light);color:var(--color-brand);font-weight:800; }
+    .run-panel { border-radius:12px; }
+    @media(max-width:1100px){.sim-metrics{grid-template-columns:repeat(2,1fr)}.run-layout{grid-template-columns:1fr}.drawer-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body class="studio-page">
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    <div class="page-inner simulation-shell">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Simulation & Testing</h1>
+          <p class="page-subtitle">Private Car Comprehensive · v2026.04</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="openSimulationTab('compare')">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M229.66 109.66l-48 48a8 8 0 01-11.32-11.32L206.69 112H128a88.1 88.1 0 00-88 88 8 8 0 01-16 0 104.11 104.11 0 01104-104h78.69l-36.35-36.34a8 8 0 0111.32-11.32l48 48a8 8 0 010 11.32z" fill="currentColor"/></svg>
+            Compare Versions
+          </button>
+          <button class="btn btn-primary" onclick="openAddTestModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+            Add Test Case
+          </button>
+          <button class="btn btn-primary" style="background:var(--color-success);border-color:var(--color-success)" onclick="runAllTests(this)">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M228 128a8 8 0 01-4 6.93l-144 80A8 8 0 0168 208V48a8 8 0 0112-6.93l144 80a8 8 0 010 13.86z" fill="currentColor"/></svg>
+            Run All Tests
+          </button>
+        </div>
+      </div>
+
+      <div class="simulation-hero"><div class="studio-context-bar">
+        <span class="studio-context-pill">
+          <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+          PRD-001 · v2026.04
+        </span>
+        <span style="color:var(--color-muted)">·</span>
+        <span>12 test cases &nbsp;·&nbsp; 12 passed &nbsp;·&nbsp; 0 failed</span>
+        <span class="status-badge pass" style="margin-left:8px">ALL TESTS PASSED</span>
+        <div style="margin-left:auto"><a href="product-detail.html?id=PRD-001#studios" class="btn btn-ghost btn-sm">← Back to Product</a></div>
+      </div></div>
+
+      <section class="sim-metrics" aria-label="Simulation summary">
+        <div class="sim-metric"><div class="sim-metric-label">Coverage</div><div class="sim-metric-value good">100%</div><div class="sim-metric-copy">12 of 12 scenarios represented</div></div>
+        <div class="sim-metric"><div class="sim-metric-label">Pass rate</div><div class="sim-metric-value good" id="sim-pass-rate">100%</div><div class="sim-metric-copy">No blocking failures</div></div>
+        <div class="sim-metric"><div class="sim-metric-label">Average run</div><div class="sim-metric-value">2.3s</div><div class="sim-metric-copy">All engines and documents</div></div>
+        <div class="sim-metric"><div class="sim-metric-label">Release confidence</div><div class="sim-metric-value good">Ready</div><div class="sim-metric-copy">Regression gate satisfied</div></div>
+      </section>
+
+      <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('suite', this)">Test Suite</button>
+        <button class="tab-btn" onclick="switchTab('run', this)">Individual Run</button>
+        <button class="tab-btn" onclick="switchTab('compare', this)">Version Comparison</button>
+        <button class="tab-btn" onclick="switchTab('regress', this)">Regression Suite</button>
+      </div>
+
+      <!-- TAB 1: Test Suite -->
+      <div id="tab-suite" class="tab-pane active">
+        <div class="progress-bar-wrap">
+          <div class="progress-header">
+            <span>12 Test Cases</span>
+            <span><span style="color:var(--color-success)">12 Passed</span> &nbsp; <span style="color:var(--color-danger)">0 Failed</span> &nbsp; <span style="color:var(--color-muted)">0 Skipped</span></span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="main-progress"></div></div>
+          <div class="progress-footer">
+            <span>Last Run: 21-Aug-2026 14:37 by Rajan Mehta</span>
+            <span>Duration: 2.3s</span>
+          </div>
+        </div>
+
+        <div class="suite-toolbar">
+          <div class="suite-search"><span>⌕</span><input id="sim-search" type="search" class="form-control" placeholder="Search test cases..." oninput="filterTests()"></div>
+          <select id="sim-category" class="form-control" style="width:170px" onchange="filterTests()"><option>All Categories</option><option>Rating</option><option>Eligibility</option><option>Underwriting</option><option>Boundary</option></select>
+          <select id="sim-result" class="form-control" style="width:150px" onchange="filterTests()"><option>All Results</option><option>Passed</option><option>Failed</option></select>
+          <span id="sim-filter-count" style="margin-left:auto;font-size:12px;color:var(--color-muted)">12 tests</span>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>Test Case Name</th>
+              <th>Category</th>
+              <th>Expected Outcome</th>
+              <th>Last Result</th>
+              <th>Prem. Expected</th>
+              <th>Prem. Actual</th>
+              <th>Variance</th>
+            </tr>
+          </thead>
+          <tbody id="test-table-body">
+            <!-- Rows generated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- TAB 2: Individual Run -->
+      <div id="tab-run" class="tab-pane">
+        <div class="run-layout">
+          <div class="run-panel">
+            <div class="run-header">
+              <div style="font-weight:600;font-size:14px">Risk Profile Inputs</div>
+              <select class="form-control" style="width:160px;height:28px;font-size:12px"><option>Load profile...</option><option>Standard Risk</option><option>Young Driver</option></select>
+            </div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">driver_age</label><input type="number" class="form-control" value="35"></div>
+              <div class="form-group"><label class="form-label">vehicle_year</label><input type="number" class="form-control" value="2021"></div>
+              <div class="form-group"><label class="form-label">vehicle_make</label><input type="text" class="form-control" value="Toyota Fortuner"></div>
+              <div class="form-group"><label class="form-label">insured_value</label><input type="number" class="form-control" value="28000"></div>
+              <div class="form-group"><label class="form-label">territory_zone</label><select class="form-control"><option>Zone A (Metro)</option><option selected>Zone B (Urban)</option><option>Zone C (Rural)</option></select></div>
+              <div class="form-group"><label class="form-label">claims_free_years</label><input type="number" class="form-control" value="3"></div>
+              <div class="form-group"><label class="form-label">conviction_count</label><input type="number" class="form-control" value="0"></div>
+              <div class="form-group"><label class="form-label">selected_covers</label><select class="form-control" multiple style="height:60px"><option selected>Own Damage</option><option selected>Third Party</option><option selected>PA</option><option selected>Theft</option><option>Roadside</option></select></div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:var(--space-4)" onclick="runIndividual()">Run Full Simulation</button>
+          </div>
+          <div class="run-panel" id="run-output">
+            <div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--color-muted);flex-direction:column;gap:12px">
+              <div style="font-size:32px">⚙️</div>
+              <div style="font-size:14px">Enter risk values and run simulation to view detailed trace.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Version Comparison -->
+      <div id="tab-compare" class="tab-pane">
+        <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md)">
+          <div style="flex:1">
+            <label class="form-label">Base Version</label>
+            <div style="padding:8px 12px;background:#fff;border:1px solid var(--color-border);border-radius:4px;font-size:13px;font-weight:600">v2026.04 (Published)</div>
+          </div>
+          <div style="font-size:20px;color:var(--color-muted)">VS</div>
+          <div style="flex:1">
+            <label class="form-label">Comparison Version</label>
+            <select class="form-control"><option>v2026.07-DRAFT (PRD-002)</option></select>
+          </div>
+          <button class="btn btn-primary" style="align-self:flex-end">Run Comparison Suite</button>
+        </div>
+        
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:var(--space-3)">Premium Movement Analysis (Mode B)</h3>
+        <table class="data-table">
+          <thead><tr><th>Segment</th><th>v2026.04 Avg</th><th>v2026.07 Avg</th><th>Change</th><th>Tolerance</th></tr></thead>
+          <tbody>
+            <tr><td>21–25 years</td><td>$612</td><td>$624</td><td><span style="color:var(--color-danger)">+2.0%</span></td><td><span class="status-badge pass">PASS (<5%)</span></td></tr>
+            <tr><td>26–40 years</td><td>$394</td><td>$402</td><td><span style="color:var(--color-danger)">+2.0%</span></td><td><span class="status-badge pass">PASS (<5%)</span></td></tr>
+            <tr><td>41–60 years</td><td>$356</td><td>$363</td><td><span style="color:var(--color-danger)">+2.0%</span></td><td><span class="status-badge pass">PASS (<5%)</span></td></tr>
+            <tr><td>Metro Zone</td><td>$433</td><td>$442</td><td><span style="color:var(--color-danger)">+2.0%</span></td><td><span class="status-badge pass">PASS (<5%)</span></td></tr>
+            <tr><td>Rural Zone</td><td>$355</td><td>$362</td><td><span style="color:var(--color-danger)">+2.0%</span></td><td><span class="status-badge pass">PASS (<5%)</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- TAB 4: Regression Suite -->
+      <div id="tab-regress" class="tab-pane">
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:var(--space-3)">Regression Configuration</h3>
+        <table class="data-table" style="margin-bottom:var(--space-5)">
+          <tbody>
+            <tr><td style="width:300px;font-weight:600">Regression Trigger</td><td>Automatic — runs when version status changes to Approved</td></tr>
+            <tr><td style="font-weight:600">Tests in Regression</td><td>12 (all tests in suite)</td></tr>
+            <tr><td style="font-weight:600">Pass Threshold</td><td>100% must pass</td></tr>
+            <tr><td style="font-weight:600">Premium Variance Tolerance</td><td>±0.01% (rounding tolerance only)</td></tr>
+            <tr><td style="font-weight:600">Failure Action</td><td>Block publication; notify Product Owner + Actuary</td></tr>
+          </tbody>
+        </table>
+        
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:var(--space-3)">Regression Log</h3>
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Trigger</th><th>Result</th><th>Duration</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:'IBM Plex Mono',monospace">21-Aug-2026 14:37</td><td>Status change → Approved</td><td><span class="status-badge pass">12/12 PASSED</span></td><td>2.3s</td></tr>
+            <tr><td style="font-family:'IBM Plex Mono',monospace">10-Aug-2026 09:12</td><td>Status change → Review</td><td><span class="status-badge pass">12/12 PASSED</span></td><td>2.1s</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+const TESTS = [
+  { id:1, name:'Standard Risk — Clean Record 35yo', cat:'Rating', exp:'Accept, $394.04', res:'pass', pExp:'$394.04', pAct:'$394.04', v:'0.0%' },
+  { id:2, name:'Young Driver — 22yo Under Limit', cat:'Rating', exp:'Accept, Higher Premium', res:'pass', pExp:'$531.00', pAct:'$531.00', v:'0.0%' },
+  { id:3, name:'Below Min Age — 19yo', cat:'Eligibility', exp:'Ineligible (Hard Block)', res:'pass', pExp:'N/A', pAct:'N/A', v:'—' },
+  { id:4, name:'Serious Conviction — 2 in 5yr', cat:'Underwriting', exp:'Decline', res:'pass', pExp:'N/A', pAct:'N/A', v:'—' },
+  { id:5, name:'High-Value Vehicle — $65k', cat:'Underwriting', exp:'Refer (High Value)', res:'pass', pExp:'$612.00*', pAct:'$612.00', v:'0.0%' },
+  { id:6, name:'Old Vehicle — 16yr', cat:'Eligibility', exp:'Ineligible', res:'pass', pExp:'N/A', pAct:'N/A', v:'—' },
+  { id:7, name:'Minor Conviction — 1 in 3yr', cat:'Underwriting', exp:'Accept with 25% Load', res:'pass', pExp:'$492.55', pAct:'$492.55', v:'0.0%' },
+  { id:8, name:'Roadside Add-On Selected', cat:'Rating', exp:'Accept, +$60', res:'pass', pExp:'$454.04', pAct:'$454.04', v:'0.0%' },
+  { id:9, name:'Broker Channel — High SI Override', cat:'Rating', exp:'Accept via Broker (SI $130k)', res:'pass', pExp:'$520.00', pAct:'$520.00', v:'0.0%' },
+  { id:10, name:'No Claims Discount — 5 Years', cat:'Rating', exp:'50% NCD Applied', res:'pass', pExp:'$222.02', pAct:'$222.02', v:'0.0%' },
+  { id:11, name:'Boundary: Age exactly 21', cat:'Boundary', exp:'Accept (boundary edge)', res:'pass', pExp:'$485.00', pAct:'$485.00', v:'0.0%' },
+  { id:12, name:'Boundary: Vehicle Age exactly 15yr', cat:'Boundary', exp:'Eligible (boundary edge)', res:'pass', pExp:'$394.04', pAct:'$394.04', v:'0.0%' }
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label:'PRD-001', href:'product-detail.html?id=PRD-001' },
+    { label:'v2026.04', href:'product-detail.html?id=PRD-001&version=2026.04' },
+    { label:'Simulation & Testing', href:'#' }
+  ]);
+  renderTests();
+});
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tab-${id}`).classList.add('active');
+}
+
+function openSimulationTab(id) {
+  const labels = { suite:'Test Suite', run:'Individual Run', compare:'Version Comparison', regress:'Regression Suite' };
+  const button = Array.from(document.querySelectorAll('.tabs-nav .tab-btn')).find(item => item.textContent.trim() === labels[id]);
+  if (button) switchTab(id, button);
+}
+
+function renderTests(rows = TESTS) {
+  const tbody = document.getElementById('test-table-body');
+  let html = '';
+  rows.forEach(t => {
+    html += `
+      <tr class="row-expandable" onclick="toggleDrawer(${t.id})">
+        <td>${t.id}</td>
+        <td><div class="test-name"><span class="test-icon">${t.cat[0]}</span><strong>${t.name}</strong></div></td>
+        <td>${t.cat}</td>
+        <td>${t.exp}</td>
+        <td><span class="status-badge ${t.res}">✓ PASSED</span></td>
+        <td style="font-family:'IBM Plex Mono',monospace">${t.pExp}</td>
+        <td style="font-family:'IBM Plex Mono',monospace">${t.pAct}</td>
+        <td style="font-family:'IBM Plex Mono',monospace">${t.v}</td>
+      </tr>
+      <tr>
+        <td colspan="8" style="padding:0;border:none">
+          <div class="detail-drawer" id="drawer-${t.id}">
+            <div class="drawer-grid">
+              <div class="drawer-box">
+                <div class="drawer-title">Input Risk Profile</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-ink);line-height:1.5;white-space:pre">driver_age:              35
+vehicle_year:            2021 (age 5)
+vehicle_make:            Toyota Fortuner
+insured_value:           $28,000
+territory_zone:          Zone B (Urban)
+claims_free_years:       3
+conviction_history:      No
+selected_covers:         Own Damage, TP...</div>
+              </div>
+              <div class="drawer-box">
+                <div class="drawer-title">Actual Results (Last Run)</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-ink);line-height:1.5;white-space:pre">Eligibility:             <span style="color:var(--color-success)">Eligible ✓</span>
+Rules Evaluated:         6/6
+Rules Triggered:         0
+
+UW Decision:             <span style="color:var(--color-success)">Accept ✓</span>
+UW Rules Evaluated:      9/9
+UW Rules Triggered:      0
+
+Premium:                 <span style="color:var(--color-success)">$394.04 ✓</span>
+Variance from expected:  $0.00 (0.0%) ✓</div>
+              </div>
+              <div class="drawer-box">
+                <div class="drawer-title">Actions</div>
+                <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:8px">Edit Test Case</button>
+                <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:8px">View Full Rule Trace</button>
+                <button class="btn btn-primary btn-sm" style="width:100%">Run This Test Only</button>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = html;
+}
+
+function filterTests() {
+  const query = document.getElementById('sim-search').value.trim().toLowerCase();
+  const category = document.getElementById('sim-category').value;
+  const result = document.getElementById('sim-result').value;
+  const resultCode = result === 'Passed' ? 'pass' : result === 'Failed' ? 'fail' : null;
+  const rows = TESTS.filter(test =>
+    (!query || `${test.name} ${test.cat} ${test.exp}`.toLowerCase().includes(query)) &&
+    (category === 'All Categories' || test.cat === category) &&
+    (!resultCode || test.res === resultCode)
+  );
+  renderTests(rows);
+  document.getElementById('sim-filter-count').textContent = `${rows.length} test${rows.length===1?'':'s'}`;
+}
+
+function toggleDrawer(id) {
+  const d = document.getElementById(`drawer-${id}`);
+  if(d.classList.contains('open')) d.classList.remove('open');
+  else {
+    document.querySelectorAll('.detail-drawer').forEach(el=>el.classList.remove('open'));
+    d.classList.add('open');
+  }
+}
+
+function runAllTests(button) {
+  const fill = document.getElementById('main-progress');
+  if (button) { button.disabled = true; button.dataset.label = button.innerHTML; button.textContent = 'Running 12 tests…'; }
+  fill.style.width = '0%';
+  fill.classList.add('running');
+  setTimeout(()=> { fill.style.width = '20%'; }, 200);
+  setTimeout(()=> { fill.style.width = '60%'; }, 500);
+  setTimeout(()=> { fill.style.width = '90%'; }, 900);
+  setTimeout(()=> { 
+    fill.style.width = '100%'; 
+    fill.classList.remove('running');
+    if (button) { button.disabled = false; button.innerHTML = button.dataset.label; }
+    PS.actionResult('success', 'Tests Complete', '12/12 Test cases passed successfully.');
+  }, 1200);
+}
+
+function runIndividual() {
+  const out = document.getElementById('run-output');
+  out.innerHTML = `
+    <div class="run-header">
+      <div style="font-weight:600;font-size:14px">Simulation Results</div>
+      <span class="status-badge pass" style="font-size:12px">✓ PASSED</span>
+    </div>
+    
+    <div style="display:flex;gap:var(--space-4);margin-bottom:var(--space-4)">
+      <div style="flex:1;background:var(--color-surface);padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);text-align:center">
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:4px">Eligibility</div>
+        <div style="font-size:14px;font-weight:600;color:var(--color-success)">Eligible</div>
+      </div>
+      <div style="flex:1;background:var(--color-surface);padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);text-align:center">
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:4px">UW Decision</div>
+        <div style="font-size:14px;font-weight:600;color:var(--color-success)">Accept</div>
+      </div>
+      <div style="flex:1;background:var(--color-surface);padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);text-align:center">
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:4px">Premium</div>
+        <div style="font-size:16px;font-weight:700;color:var(--color-brand);font-family:'IBM Plex Mono',monospace">$394.04</div>
+      </div>
+    </div>
+
+    <div style="font-weight:600;font-size:13px;margin-bottom:var(--space-2)">Rule Trace Engine Log</div>
+    <div class="rule-trace">
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.041]</span><span class="trace-head">ELIGIBILITY ENGINE START</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.043]</span><span class="trace-msg">ELG-001 (Min Driver Age): driver_age=35 ≥ 21 → <span class="trace-pass">PASS</span></span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.044]</span><span class="trace-msg">ELG-002 (Max Vehicle Age): vehicle_age=5 ≤ 15 → <span class="trace-pass">PASS</span></span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.048]</span><span class="trace-head">ELIGIBILITY RESULT: ELIGIBLE</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.049]</span><span class="trace-head">RATING ENGINE START</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.051]</span><span class="trace-msg">BASE_RATE: $350.00</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.053]</span><span class="trace-msg">DRIVER_AGE_FACTOR: age=35 → band 31-40 → ×1.00</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.054]</span><span class="trace-msg">VEHICLE_AGE_FACTOR: age=5 → band 4-7 → ×0.95</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.055]</span><span class="trace-msg">TERRITORY_FACTOR: Zone B / Private → ×1.10</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.089]</span><span class="trace-head">PAYABLE_PREMIUM: $394.04</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.090]</span><span class="trace-head">UW ENGINE START</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.092]</span><span class="trace-msg">UW-ACC-001: conditions met → ACCEPT</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.093]</span><span class="trace-head">UW DECISION: ACCEPT</span></div>
+<div class="rule-trace-line"><span class="trace-time">[14:37:22.094]</span><span class="trace-head">SIMULATION COMPLETE</span></div>
+    </div>
+    
+    <div style="display:flex;justify-content:flex-end;margin-top:var(--space-4)">
+      <button class="btn btn-secondary">Save as Test Case</button>
+    </div>
+  `;
+}
+
+function openAddTestModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Add Test Case</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group span-2">
+          <label class="form-label">Test Case Name</label>
+          <input type="text" class="form-control" placeholder="e.g. Standard Risk - Metric Override">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-control"><option>Rating</option><option>Eligibility</option><option>Underwriting</option><option>Boundary</option></select>
+        </div>
+        
+        <div class="span-2" style="margin-top:var(--space-3)"><hr style="border:none;border-top:1px solid var(--color-border)"></div>
+        <div class="span-2" style="font-weight:600;font-size:14px">Expected Outcomes</div>
+        
+        <div class="form-group">
+          <label class="form-label">Expected Eligibility</label>
+          <select class="form-control"><option>Eligible</option><option>Ineligible</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expected UW Decision</label>
+          <select class="form-control"><option>Accept</option><option>Decline</option><option>Refer</option><option>Load</option><option>Restrict</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expected Premium ($)</label>
+          <input type="text" class="form-control" placeholder="e.g. 450.00 or N/A">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Premium Tolerance (%)</label>
+          <input type="text" class="form-control" value="0.01">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSimulationTest()">Save Test Case</button>
+    </div>
+  `);
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

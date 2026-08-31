@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integration Monitor — Product Studio | VeriDex</title>
+  <meta name="description" content="Monitor the health and activity of the Runtime Product APIs and downstream system integrations.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Banner ────────────────────────────────── */
+    .status-banner { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: #DCFCE7; border: 1px solid #86EFAC; border-radius: var(--radius-md); color: #166534; font-size: 13px; font-weight: 500; margin-bottom: var(--space-5); }
+    
+    /* ── System Status Strip ───────────────────── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-5); }
+    .kpi-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .kpi-title { font-size: 12px; font-weight: 600; color: var(--color-muted); text-transform: uppercase; }
+    .kpi-status-wrap { display: flex; align-items: center; justify-content: space-between; }
+    .kpi-status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--color-ink); }
+    .kpi-status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .kpi-status-dot.green { background: var(--color-success); box-shadow: 0 0 0 2px #DCFCE7; }
+    .kpi-status-dot.amber { background: var(--color-warning); box-shadow: 0 0 0 2px #FEF9C3; }
+    .kpi-status-dot.red { background: var(--color-danger); box-shadow: 0 0 0 2px #FEE2E2; }
+    .kpi-uptime { font-size: 12px; color: var(--color-muted); font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── Tabs ──────────────────────────────────── */
+    .tabs-nav { display: flex; gap: var(--space-5); border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-4); padding: 0 var(--space-5); }
+    .tab-btn { padding: var(--space-3) 0; font-size: 14px; font-weight: 500; color: var(--color-muted); border-bottom: 2px solid transparent; cursor: pointer; user-select: none; transition: color .2s, border-color .2s; }
+    .tab-btn:hover { color: var(--color-ink); }
+    .tab-btn.active { color: var(--color-brand); border-bottom-color: var(--color-brand); font-weight: 600; }
+    .tab-pane { display: none; padding: 0 var(--space-5); }
+    .tab-pane.active { display: block; }
+
+    /* ── Data Tables ───────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .data-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-success { color: var(--color-success); background: #DCFCE7; }
+    .badge-warning { color: var(--color-warning); background: #FEF9C3; }
+    .badge-danger { color: var(--color-danger); background: #FEE2E2; }
+    body.integration-monitor-page { overflow:hidden; }
+    .integration-monitor-page .main-content { min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:16px 20px 18px; }
+    .integration-monitor-page .page-header { flex:0 0 auto; margin:0 0 12px; padding:0!important; align-items:center; }
+    .monitor-shell { width:100%; max-width:1540px; min-height:0; flex:1; margin:0 auto; padding:0; display:flex; flex-direction:column; }
+    .monitor-overview { position:relative; flex:0 0 auto; overflow:hidden; padding:14px 16px; margin-bottom:12px; border:1px solid #b7d5c3; border-radius:12px; background:linear-gradient(120deg,#f2fbf5,#f7fbff); box-shadow:0 8px 22px rgba(22,101,52,.06); }
+    .monitor-overview::after { content:""; position:absolute; width:240px; height:240px; right:-90px; top:-130px; border-radius:50%; background:rgba(22,163,74,.08); }
+    .status-banner { position:relative; z-index:1; margin:0; padding:0; border:0; background:transparent; font-size:14px; }
+    .live-pulse { position:relative; width:11px; height:11px; border-radius:50%; background:var(--color-success); box-shadow:0 0 0 0 rgba(34,197,94,.35); animation:livePulse 1.8s infinite; }
+    @keyframes livePulse { 70%{box-shadow:0 0 0 9px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+    .monitor-overview-copy { margin-left:auto; font-size:11px; font-family:'IBM Plex Mono',monospace; color:#497158; }
+    .kpi-grid { flex:0 0 auto; gap:12px; margin-bottom:12px; }
+    .kpi-card { position:relative; overflow:hidden; min-height:94px; padding:12px 14px; border-radius:10px; background:#fff; box-shadow:0 4px 16px rgba(15,23,42,.04); }
+    .kpi-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--color-success); }
+    .kpi-card:hover { transform:translateY(-3px); box-shadow:0 10px 25px rgba(31,72,124,.10); border-color:#b8cbea; }
+    .kpi-metric { display:flex;align-items:flex-end;justify-content:space-between;margin-top:auto; }
+    .kpi-number { font-size:22px;font-weight:750;color:var(--color-ink); }
+    .mini-bars { display:flex;align-items:flex-end;gap:2px;height:25px; }
+    .mini-bars i { display:block;width:4px;border-radius:2px;background:#9bd6b0; }
+    .tabs-nav { position:static; flex:0 0 auto; z-index:20; gap:5px; margin:0 0 10px; padding:5px; border:1px solid var(--color-border); border-radius:10px; background:#fff; box-shadow:0 5px 18px rgba(15,23,42,.05); }
+    .tab-btn { appearance:none;border:0;border-radius:7px;padding:9px 14px;background:transparent; }
+    .tab-btn.active { border:0;background:var(--color-brand);color:#fff;box-shadow:0 4px 12px rgba(31,79,138,.22); }
+    .tab-pane { padding:0; min-height:0; }
+    .tab-pane.active { display:flex; flex:1; min-height:0; flex-direction:column; overflow:hidden; animation:monitorFade .2s ease-out; }
+    @keyframes monitorFade { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+    .monitor-toolbar { display:flex; flex:0 0 auto; align-items:center;gap:10px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--color-border);border-radius:10px;background:#fff; }
+    .monitor-search { position:relative;flex:1;max-width:390px; }
+    .monitor-search span { position:absolute;left:11px;top:8px;color:var(--color-muted); }
+    .monitor-search input { padding-left:33px; }
+    .monitor-table-scroll { flex:1; min-height:0; overflow:auto; border:1px solid var(--color-border); border-radius:10px; background:#fff; box-shadow:0 5px 18px rgba(15,23,42,.05); overscroll-behavior:contain; scrollbar-gutter:stable; }
+    .monitor-table-scroll .data-table { min-width:900px; border:0; border-radius:0; box-shadow:none; }
+    .monitor-table-scroll thead th { position:sticky; top:0; z-index:1; box-shadow:0 1px 0 var(--color-border); }
+    .monitor-table-scroll tbody tr:last-child td { border-bottom:0; }
+    .data-table tbody tr { transition:background .15s; }
+    .data-table tbody tr:hover { background:#f7faff; }
+    .endpoint { display:block;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 7px;border-radius:5px;background:#f6f8fb;color:#385778; }
+    .latency-good { color:var(--color-success);font-weight:650; }
+    .monitor-footnote { flex:0 0 auto; margin-top:8px; font-size:12px; color:var(--color-muted); text-align:center; }
+    @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.monitor-toolbar{flex-wrap:wrap}.monitor-overview-copy{display:none}}
+    @media(max-height:760px){.monitor-overview{display:none}.kpi-card{min-height:78px}.kpi-title{font-size:10px}.kpi-number{font-size:19px}}
+  </style>
+</head>
+<body class="integration-monitor-page">
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    
+    <div class="page-header" style="padding-left:var(--space-5);padding-right:var(--space-5)">
+      <div class="page-header-left">
+        <h1 class="page-title">Integration Monitor</h1>
+        <p class="page-subtitle">Runtime services: All operational · Last checked: <span id="last-checked">just now</span></p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-ghost" onclick="window.open('#', '_blank')">
+          <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+          API Docs ↗
+        </button>
+        <button class="btn btn-secondary" onclick="refreshMonitor(this)">
+          <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="monitor-shell">
+      <div class="monitor-overview">
+      <div class="status-banner" id="status-banner">
+        <span class="live-pulse" aria-hidden="true"></span>
+        <span><strong>All systems operational.</strong> Runtime traffic is healthy across every connected service.</span>
+        <span class="monitor-overview-copy">LIVE · AUTO REFRESH 30s</span>
+      </div>
+      </div>
+      
+      <div class="kpi-grid">
+        <div class="kpi-card" onclick="openUptimeModal('Runtime Product API', '99.98%')">
+          <div class="kpi-title">Runtime Product API</div>
+          <div class="kpi-status-wrap">
+            <div class="kpi-status"><div class="kpi-status-dot green"></div> Operational</div>
+            <div class="kpi-uptime">99.98% (30d)</div>
+          </div>
+          <div class="kpi-metric"><span><span class="kpi-number">42</span><span class="kpi-uptime"> ms p95</span></span><span class="mini-bars"><i style="height:8px"></i><i style="height:12px"></i><i style="height:10px"></i><i style="height:16px"></i><i style="height:14px"></i><i style="height:19px"></i><i style="height:15px"></i><i style="height:20px"></i></span></div>
+        </div>
+        <div class="kpi-card" onclick="openUptimeModal('Rating Service', '99.95%')">
+          <div class="kpi-title">Rating Service</div>
+          <div class="kpi-status-wrap">
+            <div class="kpi-status"><div class="kpi-status-dot green"></div> Operational</div>
+            <div class="kpi-uptime">99.95% (30d)</div>
+          </div>
+          <div class="kpi-metric"><span><span class="kpi-number">51</span><span class="kpi-uptime"> ms p95</span></span><span class="mini-bars"><i style="height:12px"></i><i style="height:9px"></i><i style="height:14px"></i><i style="height:17px"></i><i style="height:13px"></i><i style="height:22px"></i><i style="height:18px"></i><i style="height:16px"></i></span></div>
+        </div>
+        <div class="kpi-card" onclick="openUptimeModal('Rules Engine', '99.97%')">
+          <div class="kpi-title">Rules Engine</div>
+          <div class="kpi-status-wrap">
+            <div class="kpi-status"><div class="kpi-status-dot green"></div> Operational</div>
+            <div class="kpi-uptime">99.97% (30d)</div>
+          </div>
+          <div class="kpi-metric"><span><span class="kpi-number">37</span><span class="kpi-uptime"> ms p95</span></span><span class="mini-bars"><i style="height:7px"></i><i style="height:11px"></i><i style="height:9px"></i><i style="height:13px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:14px"></i><i style="height:18px"></i></span></div>
+        </div>
+        <div class="kpi-card" onclick="openUptimeModal('Authoring Studio', '99.99%')">
+          <div class="kpi-title">Authoring Studio</div>
+          <div class="kpi-status-wrap">
+            <div class="kpi-status"><div class="kpi-status-dot green"></div> Operational</div>
+            <div class="kpi-uptime">99.99% (30d)</div>
+          </div>
+          <div class="kpi-metric"><span><span class="kpi-number">29</span><span class="kpi-uptime"> ms p95</span></span><span class="mini-bars"><i style="height:6px"></i><i style="height:8px"></i><i style="height:7px"></i><i style="height:12px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:11px"></i><i style="height:15px"></i></span></div>
+        </div>
+      </div>
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('runtime', this)">Runtime APIs</button>
+      <button class="tab-btn" onclick="switchTab('consumers', this)">Consumer Systems</button>
+      <button class="tab-btn" onclick="switchTab('logs', this)">API Log</button>
+      <button class="tab-btn" onclick="switchTab('webhooks', this)">Webhooks</button>
+    </div>
+
+    <!-- TAB: Runtime APIs -->
+    <div id="tab-runtime" class="tab-pane active">
+      <div class="monitor-toolbar"><div class="monitor-search"><span>⌕</span><input id="runtime-search" class="form-control" type="search" placeholder="Search product, ID, or endpoint…" oninput="filterRuntimeRows()"></div><select id="runtime-status" class="form-control" style="width:170px" onchange="filterRuntimeRows()"><option>All statuses</option><option>Operational</option><option>Degraded</option></select><span id="runtime-count" style="margin-left:auto;font-size:12px;color:var(--color-muted)">3 APIs</span></div>
+      <div class="monitor-table-scroll" role="region" aria-label="Runtime APIs" tabindex="0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Version</th>
+            <th>API Endpoint</th>
+            <th>Status</th>
+            <th>Avg RT</th>
+            <th>Requests (24h)</th>
+            <th>Error Rate</th>
+            <th>Published</th>
+            <th>Channels</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="runtime-api-body">
+          <tr>
+            <td><strong>Private Car Comprehensive</strong><br><span style="font-size:11px;color:var(--color-muted)">PRD-001</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.04</td>
+            <td><code class="endpoint">/api/v1/products/PRD-001/v2026.04</code></td>
+            <td><span class="status-badge badge-success">● Operational</span></td>
+            <td class="latency-good">42ms</td>
+            <td>8,241</td>
+            <td>0.01%</td>
+            <td>01-Apr-2026</td>
+            <td>4</td>
+            <td style="text-align:right;display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-secondary btn-sm" onclick="openTestModal()">Test Endpoint</button>
+              <button class="btn btn-ghost btn-sm" onclick="openMonitorTab('logs')">View Logs</button>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Motorcycle Comprehensive</strong><br><span style="font-size:11px;color:var(--color-muted)">PRD-014</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.03</td>
+            <td><code class="endpoint">/api/v1/products/PRD-014/v2026.03</code></td>
+            <td><span class="status-badge badge-success">● Operational</span></td>
+            <td class="latency-good">38ms</td>
+            <td>1,204</td>
+            <td>0.00%</td>
+            <td>01-Mar-2026</td>
+            <td>3</td>
+            <td style="text-align:right;display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-secondary btn-sm" onclick="openTestModal()">Test Endpoint</button>
+              <button class="btn btn-ghost btn-sm" onclick="openMonitorTab('logs')">View Logs</button>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Household Buildings & Contents</strong><br><span style="font-size:11px;color:var(--color-muted)">PRD-007</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace">2026.04</td>
+            <td><code class="endpoint">/api/v1/products/PRD-007/v2026.04</code></td>
+            <td><span class="status-badge badge-success">● Operational</span></td>
+            <td class="latency-good">45ms</td>
+            <td>3,882</td>
+            <td>0.02%</td>
+            <td>15-Mar-2026</td>
+            <td>5</td>
+            <td style="text-align:right;display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-secondary btn-sm" onclick="openTestModal()">Test Endpoint</button>
+              <button class="btn btn-ghost btn-sm" onclick="openMonitorTab('logs')">View Logs</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- TAB: Consumer Systems -->
+    <div id="tab-consumers" class="tab-pane">
+      <div class="monitor-table-scroll" role="region" aria-label="Consumer systems" tabindex="0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>System</th>
+            <th>Type</th>
+            <th>Integration Method</th>
+            <th>Status</th>
+            <th>Last Ping</th>
+            <th>Products Consuming</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="cursor:pointer" onclick="openConsumerSystemModal('Quotation Engine', 'Internal', 'REST API', '7 products')">
+            <td><strong>Quotation Engine</strong></td>
+            <td><span class="status-badge" style="background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-ink)">Internal</span></td>
+            <td>REST API</td>
+            <td><span class="status-badge badge-success">● Operational</span></td>
+            <td>30s ago</td>
+            <td>7 products</td>
+          </tr>
+          <tr style="cursor:pointer" onclick="openConsumerSystemModal('Billing System', 'Internal', 'Event Stream', '7 products')">
+            <td><strong>Billing System</strong></td>
+            <td><span class="status-badge" style="background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-ink)">Internal</span></td>
+            <td>Event Stream</td>
+            <td><span class="status-badge badge-success">● Operational</span></td>
+            <td>1 min ago</td>
+            <td>7 products</td>
+          </tr>
+          <tr style="cursor:pointer" onclick="openConsumerSystemModal('Broker Portal', 'External', 'REST API + Webhooks', '5 products')">
+            <td><strong>Broker Portal</strong></td>
+            <td><span class="status-badge" style="background:var(--color-brand-light);color:var(--color-brand)">External</span></td>
+            <td>REST API + Webhooks</td>
+            <td><span class="status-badge badge-success">● Operational</span></td>
+            <td>2 min ago</td>
+            <td>5 products</td>
+          </tr>
+          <tr style="cursor:pointer" onclick="openConsumerSystemModal('InsureNow App (API Partner)', 'External Partner', 'REST API', '1 product')">
+            <td><strong>InsureNow App (API Partner)</strong></td>
+            <td><span class="status-badge" style="background:var(--color-brand-light);color:var(--color-brand)">External Partner</span></td>
+            <td>REST API</td>
+            <td><span class="status-badge badge-success">● Operational</span></td>
+            <td>30s ago</td>
+            <td>1 product</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- TAB: API Log -->
+    <div id="tab-logs" class="tab-pane">
+      <div class="monitor-toolbar">
+        <div class="monitor-search"><span>⌕</span><input id="log-search" type="search" class="form-control" placeholder="Search trace, consumer, product…" oninput="filterLogRows()"></div>
+        <select class="form-control" style="width:160px"><option>Date: Last Hour</option><option>Today</option></select>
+        <select id="log-status" class="form-control" style="width:180px" onchange="filterLogRows()"><option>Status: All</option><option>2xx OK</option><option>4xx Client Error</option><option>5xx Server Error</option></select>
+        <span id="log-count" style="margin-left:auto;font-size:12px;color:var(--color-muted)">3 requests</span>
+      </div>
+      <div class="monitor-table-scroll" role="region" aria-label="API activity log" tabindex="0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Consumer</th>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Status</th>
+            <th>Response Time</th>
+            <th>Product</th>
+            <th>Trace ID</th>
+          </tr>
+        </thead>
+        <tbody id="api-log-body">
+          <tr>
+            <td style="font-family:'IBM Plex Mono',monospace">14:05:22.124</td>
+            <td>Broker Portal</td>
+            <td style="font-family:'IBM Plex Mono',monospace">/eligibility</td>
+            <td><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 4px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px">POST</span></td>
+            <td><span style="color:var(--color-success);font-weight:600">200 OK</span></td>
+            <td style="color:var(--color-success)">42ms</td>
+            <td>PRD-001</td>
+            <td><a href="#" style="font-family:'IBM Plex Mono',monospace;text-decoration:none;color:var(--color-brand)">trc_98fa3b2</a></td>
+          </tr>
+          <tr>
+            <td style="font-family:'IBM Plex Mono',monospace">13:55:01.002</td>
+            <td>InsureNow App</td>
+            <td style="font-family:'IBM Plex Mono',monospace">/rating</td>
+            <td><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 4px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px">POST</span></td>
+            <td><span style="color:var(--color-warning);font-weight:600">429 Too Many Req</span></td>
+            <td>12ms</td>
+            <td>PRD-014</td>
+            <td><a href="#" style="font-family:'IBM Plex Mono',monospace;text-decoration:none;color:var(--color-brand)">trc_77da1c4</a></td>
+          </tr>
+          <tr>
+            <td style="font-family:'IBM Plex Mono',monospace">12:03:44.911</td>
+            <td>Broker Portal</td>
+            <td style="font-family:'IBM Plex Mono',monospace">/rating</td>
+            <td><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 4px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px">POST</span></td>
+            <td><span style="color:var(--color-danger);font-weight:600">422 Unprocessable</span></td>
+            <td>38ms</td>
+            <td>PRD-001</td>
+            <td><a href="#" style="font-family:'IBM Plex Mono',monospace;text-decoration:none;color:var(--color-brand)">trc_65fa8a1</a></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="monitor-footnote">API logs are retained for 90 days.</div>
+    </div>
+
+    <!-- TAB: Webhooks -->
+    <div id="tab-webhooks" class="tab-pane">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:var(--space-4)">
+        <button class="btn btn-primary" onclick="openAddWebhookModal()">+ Add Webhook</button>
+      </div>
+      <div class="monitor-table-scroll" role="region" aria-label="Configured webhooks" tabindex="0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Webhook</th>
+            <th>URL</th>
+            <th>Events</th>
+            <th>Status</th>
+            <th>Last Fired</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Broker Portal Notification</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace">https://broker.example.com/webhook/studio</td>
+            <td><span class="status-badge" style="background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-ink);margin-right:4px;text-transform:lowercase">product.published</span><span class="status-badge" style="background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-ink);text-transform:lowercase">product.superseded</span></td>
+            <td><span class="status-badge badge-success">● Active</span></td>
+            <td>01-Apr-2026 08:00</td>
+          </tr>
+          <tr>
+            <td><strong>InsureNow App</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace">https://api.insurenow.example/hooks/studio</td>
+            <td><span class="status-badge" style="background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-ink);text-transform:lowercase">product.published</span></td>
+            <td><span class="status-badge badge-success">● Active</span></td>
+            <td>01-Apr-2026 08:00</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('monitor', [
+    { label:'Integration Monitor', href:'#' }
+  ]);
+});
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tab-${id}`).classList.add('active');
+}
+
+function openMonitorTab(id) {
+  const button = Array.from(document.querySelectorAll('.tabs-nav .tab-btn')).find(item => item.textContent.toLowerCase().includes(id === 'logs' ? 'api log' : id));
+  if (button) switchTab(id, button);
+}
+
+function filterRuntimeRows() {
+  const query = document.getElementById('runtime-search').value.trim().toLowerCase();
+  const status = document.getElementById('runtime-status').value.toLowerCase();
+  const rows = Array.from(document.querySelectorAll('#runtime-api-body tr'));
+  let shown = 0;
+  rows.forEach(row => { const visible = (!query || row.textContent.toLowerCase().includes(query)) && (status === 'all statuses' || row.textContent.toLowerCase().includes(status)); row.hidden = !visible; if (visible) shown++; });
+  document.getElementById('runtime-count').textContent = `${shown} API${shown===1?'':'s'}`;
+}
+
+function filterLogRows() {
+  const query = document.getElementById('log-search').value.trim().toLowerCase();
+  const status = document.getElementById('log-status').value;
+  const prefix = status.startsWith('2xx') ? '2' : status.startsWith('4xx') ? '4' : status.startsWith('5xx') ? '5' : '';
+  const rows = Array.from(document.querySelectorAll('#api-log-body tr'));
+  let shown = 0;
+  rows.forEach(row => { const text=row.textContent.toLowerCase(); const code=row.cells[4]?.textContent.trim() || ''; const visible=(!query || text.includes(query)) && (!prefix || code.startsWith(prefix)); row.hidden=!visible; if(visible) shown++; });
+  document.getElementById('log-count').textContent = `${shown} request${shown===1?'':'s'}`;
+}
+
+function refreshMonitor(button) {
+  if (button) { button.disabled=true; button.dataset.label=button.innerHTML; button.textContent='Refreshing…'; }
+  document.getElementById('last-checked').innerText = 'just now';
+  setTimeout(() => { if(button){button.disabled=false;button.innerHTML=button.dataset.label;} PS.actionResult('success','Refreshed','Live service health, traffic, and error metrics are current.'); }, 450);
+}
+
+function sendApiTest(button) {
+  button.disabled=true; button.textContent='Sending…';
+  setTimeout(() => { document.getElementById('api-empty-panel').style.display='none'; document.getElementById('api-response-panel').style.display='block'; button.disabled=false; button.textContent='Send Request'; }, 450);
+}
+
+function openTestModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Test API Endpoint</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4)">
+        <select class="form-control" style="width:120px"><option>POST</option></select>
+        <input type="text" class="form-control" style="flex:1;font-family:'IBM Plex Mono',monospace" value="/api/v1/products/PRD-001/v2026.04/eligibility">
+        <button class="btn btn-primary" onclick="sendApiTest(this)">Send Request</button>
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px">Request Body (JSON)</div>
+          <textarea class="form-control" style="height:280px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-ink);background:var(--color-surface)" spellcheck="false">{
+  "product_id": "PRD-001",
+  "version": "2026.04",
+  "risk": {
+    "driver_age": 35,
+    "vehicle_age": 5,
+    "jurisdiction": "IN",
+    "vehicle_type": "private_car",
+    "insured_value": 28000
+  }
+}</textarea>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600">Response</div>
+          </div>
+          <div id="api-response-panel" style="display:none">
+            <div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px">
+              <span style="color:var(--color-success);font-weight:600">200 OK</span>
+              <span style="color:var(--color-muted)">· Time: 42ms</span>
+            </div>
+            <textarea class="form-control" style="height:250px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-success);background:#F0FDF4" readonly spellcheck="false">{
+  "eligible": true,
+  "rules_evaluated": 6,
+  "rules_triggered": 0,
+  "product_version": "2026.04",
+  "evaluated_at": "2026-08-21T14:37:22Z",
+  "trace_id": "trc_98fa3b2"
+}</textarea>
+          </div>
+          <div id="api-empty-panel" style="height:250px;border:1px dashed var(--color-border);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:var(--color-muted);font-size:12px">
+            Hit 'Send Request' to execute API call
+          </div>
+        </div>
+      </div>
+    </div>
+  `, 'modal-lg');
+  document.getElementById('api-empty-panel').style.display = 'flex';
+}
+
+function openUptimeModal(name, uptime) {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">${name} — Service Health &amp; Metrics</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);margin-bottom:var(--space-4)">
+        <div style="background:var(--color-surface);padding:12px;border-radius:var(--radius-md);border:1px solid var(--color-border);text-align:center">
+          <div style="font-size:11px;color:var(--color-muted);text-transform:uppercase">30-Day Uptime</div>
+          <div style="font-size:20px;font-weight:700;color:var(--color-success);margin-top:4px">${uptime}</div>
+        </div>
+        <div style="background:var(--color-surface);padding:12px;border-radius:var(--radius-md);border:1px solid var(--color-border);text-align:center">
+          <div style="font-size:11px;color:var(--color-muted);text-transform:uppercase">P95 Latency</div>
+          <div style="font-size:20px;font-weight:700;color:var(--color-ink);margin-top:4px">48ms</div>
+        </div>
+        <div style="background:var(--color-surface);padding:12px;border-radius:var(--radius-md);border:1px solid var(--color-border);text-align:center">
+          <div style="font-size:11px;color:var(--color-muted);text-transform:uppercase">Error Rate (24h)</div>
+          <div style="font-size:20px;font-weight:700;color:var(--color-success);margin-top:4px">0.01%</div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px">Hourly Response Latency (Last 24h)</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:100px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:12px 16px">
+        ${[38,42,40,45,41,39,38,44,52,48,46,42,40,43,45,41,39,40,42,47,44,40,39,42].map(h => `
+          <div style="flex:1;background:var(--color-brand);height:${(h/60)*100}%;border-radius:2px;opacity:.85" title="${h}ms"></div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `, 'modal-md');
+}
+
+function openConsumerSystemModal(name, type, method, count) {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">${name}</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)">
+        <div><span style="font-size:12px;color:var(--color-muted)">Consumer Type:</span> <strong style="font-size:13px">${type}</strong></div>
+        <div><span style="font-size:12px;color:var(--color-muted)">Protocol:</span> <strong style="font-size:13px">${method}</strong></div>
+        <div><span style="font-size:12px;color:var(--color-muted)">Active Products:</span> <strong style="font-size:13px">${count}</strong></div>
+        <div><span style="font-size:12px;color:var(--color-muted)">Health Status:</span> <strong style="font-size:13px;color:var(--color-success)">● Healthy (30s heartbeat)</strong></div>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Authorized Endpoints</div>
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.8">
+        ✓ /api/v1/products/*/eligibility<br>
+        ✓ /api/v1/products/*/rating<br>
+        ✓ /api/v1/products/*/documents
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `, 'modal-md');
+}
+
+function openAddWebhookModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Configure New Webhook</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Webhook Name <span class="required">*</span></label>
+        <input type="text" class="form-control" id="wh-name" placeholder="e.g. Policy Admin System Sync">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target URL <span class="required">*</span></label>
+        <input type="url" class="form-control" id="wh-url" placeholder="https://api.yourdomain.com/webhooks/studio">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trigger Events</label>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked> <code>product.published</code> — Product version released</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" checked> <code>product.superseded</code> — Version superseded</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox"> <code>governance.gate_approved</code> — Approval gate cleared</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWebhook()">Save Webhook</button>
+    </div>
+  `, 'modal-md');
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

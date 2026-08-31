@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Detail — Product Studio | VeriDex</title>
+  <meta name="description" content="Product detail, version manager, studio configuration, governance, and audit for Insurance Product Studio.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Product header band ───────────────────────────── */
+    .product-header-band {
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      border-left: 6px solid var(--color-brand);
+      box-shadow: var(--shadow-sm);
+      padding: var(--space-5) var(--space-6);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-6);
+      margin-bottom: var(--space-5);
+    }
+    .product-header-band .phb-left {}
+    .phb-name-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-2);
+    }
+    .phb-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--color-ink);
+      letter-spacing: -0.3px;
+    }
+    .phb-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-size: 13px;
+      color: var(--color-muted);
+    }
+    .phb-meta-sep { color: var(--color-border); }
+    .phb-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-shrink: 0;
+    }
+    .badge-lg {
+      height: 26px;
+      padding: 0 12px;
+      font-size: 12px;
+    }
+
+    /* ── Two-col layout below header ───────────────────── */
+    .detail-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: var(--space-5);
+      margin-bottom: var(--space-5);
+    }
+
+    /* ── Version sidebar ───────────────────────────────── */
+    .version-sidebar {}
+    .version-sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-3);
+    }
+    .version-sidebar-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+    .version-list { display: flex; flex-direction: column; gap: 2px; }
+    .version-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background .1s;
+      border: 1px solid transparent;
+    }
+    .version-item:hover { background: var(--color-surface); }
+    .version-item.active {
+      background: var(--color-brand-light);
+      border-color: var(--color-brand-light);
+    }
+    .version-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 2px solid var(--color-border);
+      background: var(--color-panel);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .version-item.active .version-dot {
+      background: var(--color-brand);
+      border-color: var(--color-brand);
+    }
+    .version-item-body { flex: 1; min-width: 0; }
+    .version-label-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: 3px;
+    }
+    .version-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-ink);
+    }
+    .version-item.active .version-label { color: var(--color-brand); }
+    .version-period {
+      font-size: 11px;
+      color: var(--color-muted);
+    }
+    .version-by { font-size: 11px; color: var(--color-muted); margin-top: 2px; }
+
+    /* ── Summary card right ────────────────────────────── */
+    .summary-card { height: 100%; }
+
+    /* ── Completion ring ───────────────────────────────── */
+    .completion-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-6);
+    }
+    .ring-chart {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+    }
+    .ring-chart svg { transform: rotate(-90deg); }
+    .ring-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-ink);
+    }
+    .checklist { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 13px;
+    }
+    .check-icon { flex-shrink: 0; }
+    .check-done  { color: var(--color-success); }
+    .check-warn  { color: var(--color-warning); }
+    .check-empty { color: var(--color-disabled); }
+    .checklist-studio { font-weight: 500; flex: 1; }
+    .checklist-note { font-size: 12px; color: var(--color-muted); }
+
+    /* ── Governance status strip ───────────────────────── */
+    .gov-strip { display: flex; flex-direction: column; gap: 8px; }
+    .gov-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-size: 13px;
+    }
+    .gov-icon { flex-shrink: 0; }
+    .gov-gate { font-weight: 500; min-width: 120px; }
+    .gov-detail { color: var(--color-muted); font-size: 12px; }
+
+    /* ── Studio cards (Tab 2) ──────────────────────────── */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-5);
+    }
+    .studio-card {
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow .15s;
+    }
+    .studio-card:hover { box-shadow: var(--shadow-md); }
+    .studio-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .studio-icon-wrap {
+      width: 40px; height: 40px;
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      background: var(--color-brand-light);
+      color: var(--color-brand);
+      flex-shrink: 0;
+    }
+    .studio-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .studio-summary { font-size: 13px; color: var(--color-muted); }
+    .studio-badge-complete  { background:#DCFCE7; color:var(--color-success); }
+    .studio-badge-partial   { background:#FEF3C7; color:var(--color-warning); }
+    .studio-badge-missing   { background:#F1F5F9; color:var(--color-muted); }
+
+    /* ── Approval chain stepper ────────────────────────── */
+    .approval-chain {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-5) var(--space-6);
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      margin-bottom: var(--space-6);
+      overflow-x: auto;
+      gap: 0;
+    }
+    .approval-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 90px;
+    }
+    .approval-circle {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      border: 2px solid var(--color-border);
+      background: var(--color-panel);
+    }
+    .approval-circle.done { background: var(--color-success); border-color: var(--color-success); color:#fff; }
+    .approval-circle.pending { background: #FEF3C7; border-color: var(--color-warning); color: var(--color-warning); }
+    .approval-circle.rejected{ background: #FEE2E2; border-color: var(--color-danger); color: var(--color-danger); }
+    .approval-circle.final { background: var(--color-brand); border-color: var(--color-brand); color:#fff; }
+    .approval-node-label { font-size: 11px; font-weight: 500; color: var(--color-muted); text-align: center; max-width: 80px; }
+    .approval-connector { flex: 1; height: 2px; background: var(--color-border); min-width: 20px; }
+    .approval-connector.done { background: var(--color-success); }
+
+    /* ── Diff view ─────────────────────────────────────── */
+    .diff-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; margin-bottom: var(--space-3); }
+    .diff-col { padding: var(--space-4); font-size: 13px; }
+    .diff-col-a { background: #FEF2F2; border-right: 1px solid var(--color-border); }
+    .diff-col-b { background: #F0FDF4; }
+    .diff-col-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--color-muted); margin-bottom: var(--space-2); }
+    .diff-removed { color: var(--color-danger); text-decoration: line-through; }
+    .diff-added   { color: var(--color-success); font-weight: 500; }
+
+    /* ── Simulation result ─────────────────────────────── */
+    .sim-result-card {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .sim-result-header {
+      background: var(--color-surface);
+      padding: var(--space-4) var(--space-5);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sim-metric {
+      text-align: center;
+      padding: var(--space-5);
+    }
+    .sim-metric-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+    .sim-metric-label { font-size: 12px; color: var(--color-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .3px; }
+    .sim-metrics-grid { display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--color-border); }
+    .sim-metrics-grid .sim-metric + .sim-metric { border-left: 1px solid var(--color-border); }
+
+    /* ── Audit log table scoped ────────────────────────── */
+    .audit-action-badge {
+      display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+      font-size: 11px; font-weight: 600; border-radius: var(--radius-sm);
+      text-transform: uppercase;
+    }
+
+    /* ── Read-only banner ──────────────────────────────── */
+    .readonly-banner {
+      background: var(--color-brand-light);
+      border: 1px solid var(--color-brand);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--color-brand);
+      margin-bottom: var(--space-5);
+    }
+
+    /* ── Version compare selector ─────────────────────── */
+    .compare-selector { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--space-4); align-items: end; margin-bottom: var(--space-6); }
+
+    /* ── Overview detail grid ──────────────────────────── */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5) var(--space-8); }
+    .detail-field label { display: block; font-size: 12px; font-weight: 500; color: var(--color-muted); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 4px; }
+    .detail-field .field-value { font-size: 14px; color: var(--color-ink); }
+    .detail-field .field-value.mono { font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+    .jurisdiction-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .jur-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 100px; font-size: 12px; font-weight: 500; }
+    .dirty-banner {
+      background: #FFFBEB; border: 1px solid var(--color-warning);
+      border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; color: var(--color-warning); margin-bottom: var(--space-4);
+    }
+  </style>
+</head>
+<body>
+<div class="shell" id="app-shell">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+
+  <!-- Sidenav -->
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+
+  <!-- Main Content -->
+  <main class="main-content" id="main-content">
+    <div class="page-inner" id="page-inner">
+      <!-- Rendered by JS -->
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="responsive-warning" role="status">Insurance Product Studio is optimized for desktop screens (1280px and wider).</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+/* ──────────────────────────────────────────────────────────
+   DATA
+────────────────────────────────────────────────────────── */
+const PRODUCTS_DETAIL = {
+  'PRD-001': {
+    id:'PRD-001', name:'Private Car Comprehensive', family:'Motor',
+    code:'MTR-2026-001', segment:'Personal Lines', riskType:'Vehicle + Driver',
+    jurisdictions:['India','UAE','UK'], distribution:['Direct (Web)','Broker Portal'],
+    owner:'Anika Sharma', description:'Comprehensive motor insurance for private cars covering own damage, third-party liability, personal accident, and add-on covers. Available across India, UAE, and UK with localised policy wording.',
+    notes:'Version 2026.04: Extended coverage geography to include UAE. Revised own damage deductible structure. New bundled add-on: Roadside Assistance.',
+    status:'published',
+    activeVersion:'2026.04',
+    versions:[
+      { label:'2026.04', status:'published',  from:'01-Apr-2026', to:'30-Sep-2026', by:'Priya Varghese', on:'25-Mar-2026', gates:5, sim:'Passed' },
+      { label:'2026.01', status:'superseded', from:'01-Jan-2026', to:'31-Mar-2026', by:'Priya Varghese', on:'28-Dec-2025', gates:5, sim:'Passed' },
+      { label:'2025.10', status:'retired',    from:'01-Oct-2025', to:'31-Dec-2025', by:'Priya Varghese', on:'25-Sep-2025', gates:5, sim:'Passed' }
+    ],
+    studios: [
+      { id:'coverage',     name:'Coverage Studio',           icon:'umbrella',      status:'complete', summary:'4 covers · 3 mandatory · 1 optional',   href:'coverage-studio.html' },
+      { id:'questionnaire',name:'Questionnaire Studio',      icon:'list-checks',   status:'complete', summary:'18 questions across 4 sections',         href:'questionnaire-studio.html' },
+      { id:'eligibility',  name:'Eligibility Studio',        icon:'user-check',    status:'complete', summary:'6 eligibility rules configured',          href:'eligibility-studio.html' },
+      { id:'rating',       name:'Rating & Pricing Studio',   icon:'calculator',    status:'complete', summary:'12 rate tables · 3 factors',              href:'rating-studio.html' },
+      { id:'underwriting', name:'Underwriting Rules Studio', icon:'shield-check',  status:'complete', summary:'9 UW rules · 0 conflicts',               href:'underwriting-studio.html' },
+      { id:'distribution', name:'Distribution Studio',       icon:'tree-structure',status:'complete', summary:'3 channels configured',                  href:'distribution-studio.html' },
+      { id:'document',     name:'Document Studio',           icon:'file-text',     status:'complete', summary:'5 documents · 2 endorsements',           href:'document-studio.html' }
+    ],
+    governance:[
+      { gate:'Product Owner',  approver:'Anika Sharma',  action:'Approved', date:'15-Mar-2026', comment:'Proposition complete and commercially sound.' },
+      { gate:'Actuarial',      approver:'Rajan Mehta',   action:'Approved', date:'18-Mar-2026', comment:'Rates validated against 2025 loss data.' },
+      { gate:'Underwriting',   approver:'Sunita Pillai', action:'Approved', date:'20-Mar-2026', comment:'Rules aligned with 2026 appetite statement.' },
+      { gate:'Compliance',     approver:'David Okonkwo', action:'Approved', date:'22-Mar-2026', comment:'Wording reviewed. UAE jurisdiction compliant.' },
+      { gate:'Ops/Tech',       approver:'Marcus Lee',    action:'Approved', date:'25-Mar-2026', comment:'Integration tested in staging. Ready to publish.' }
+    ],
+    checklist:[
+      { studio:'Coverage Studio',            status:'done',  note:'4 covers configured' },
+      { studio:'Questionnaire Studio',        status:'done',  note:'18 questions' },
+      { studio:'Eligibility Studio',          status:'done',  note:'6 rules' },
+      { studio:'Rating & Pricing Studio',     status:'done',  note:'12 rate tables' },
+      { studio:'Underwriting Rules Studio',   status:'done',  note:'9 rules' },
+      { studio:'Distribution Studio',         status:'done',  note:'3 channels' },
+      { studio:'Document Studio',             status:'done',  note:'5 documents' }
+    ],
+    completion: 100,
+    lastSim:{ scenario:'Standard Quote — 35yo Male', date:'22-Mar-2026', passed:true, premium:'$1,248', rulesEval:9, referrals:0, declines:0 }
+  },
+  'PRD-002': {
+    id:'PRD-002', name:'Private Car Third Party Only', family:'Motor',
+    code:'MTR-2026-002', segment:'Personal Lines', riskType:'Vehicle + Driver',
+    jurisdictions:['India'], distribution:['Direct (Web)','Broker Portal'],
+    owner:'Anika Sharma', description:'Third-party liability cover for private cars. Minimum statutory requirement for all registered vehicles. Lower premium entry-level product.',
+    notes:'Version 2026.07-DRAFT: New product line targeting price-sensitive segment. Rating Studio base rates pending configuration.',
+    status:'draft',
+    activeVersion:'2026.07-DRAFT',
+    versions:[
+      { label:'2026.07-DRAFT', status:'draft', from:null, to:null, by:'Anika Sharma', on:'21-Aug-2026', gates:0, sim:'Not Run' }
+    ],
+    studios:[
+      { id:'coverage',     name:'Coverage Studio',           icon:'umbrella',      status:'complete', summary:'2 covers configured',       href:'coverage-studio.html' },
+      { id:'questionnaire',name:'Questionnaire Studio',      icon:'list-checks',   status:'complete', summary:'10 questions configured',   href:'questionnaire-studio.html' },
+      { id:'eligibility',  name:'Eligibility Studio',        icon:'user-check',    status:'partial',  summary:'3 of 5 rules complete',    href:'eligibility-studio.html' },
+      { id:'rating',       name:'Rating & Pricing Studio',   icon:'calculator',    status:'missing',  summary:'No base rate configured',   href:'rating-studio.html' },
+      { id:'underwriting', name:'Underwriting Rules Studio', icon:'shield-check',  status:'missing',  summary:'Not started',              href:'underwriting-studio.html' },
+      { id:'distribution', name:'Distribution Studio',       icon:'tree-structure',status:'missing',  summary:'Not started',              href:'distribution-studio.html' },
+      { id:'document',     name:'Document Studio',           icon:'file-text',     status:'missing',  summary:'Not started',              href:'document-studio.html' }
+    ],
+    governance:[
+      { gate:'Product Owner',  approver:'—', action:'Pending', date:'—', comment:'—' },
+      { gate:'Actuarial',      approver:'—', action:'Pending', date:'—', comment:'—' },
+      { gate:'Underwriting',   approver:'—', action:'Pending', date:'—', comment:'—' },
+      { gate:'Compliance',     approver:'—', action:'Pending', date:'—', comment:'—' },
+      { gate:'Ops/Tech',       approver:'—', action:'Pending', date:'—', comment:'—' }
+    ],
+    checklist:[
+      { studio:'Coverage Studio',          status:'done',  note:'2 covers configured' },
+      { studio:'Questionnaire Studio',     status:'done',  note:'10 questions' },
+      { studio:'Eligibility Studio',       status:'warn',  note:'3 of 5 rules' },
+      { studio:'Rating & Pricing Studio',  status:'empty', note:'Not configured' },
+      { studio:'Underwriting Rules Studio',status:'empty', note:'Not configured' },
+      { studio:'Distribution Studio',      status:'empty', note:'Not configured' },
+      { studio:'Document Studio',          status:'empty', note:'Not configured' }
+    ],
+    completion: 30,
+    lastSim: null
+  },
+  'PRD-003': {
+    id:'PRD-003', name:'SME Property All Risks', family:'Property',
+    code:'PRP-2026-001', segment:'Commercial Lines', riskType:'Property + Contents',
+    jurisdictions:['India','UK'], distribution:['Broker Portal','API Partner'],
+    owner:'Anika Sharma', description:'All-risks property insurance for small and medium enterprises. Covers buildings, contents, business interruption, and machinery breakdown.',
+    notes:'Version 2026.06-RC1: Submitted for review 20-Aug-2026. Awaiting actuarial sign-off.',
+    status:'review',
+    activeVersion:'2026.06-RC1',
+    versions:[
+      { label:'2026.06-RC1', status:'review', from:null, to:null, by:'Anika Sharma', on:'20-Aug-2026', gates:1, sim:'Passed' }
+    ],
+    studios:[
+      { id:'coverage',     name:'Coverage Studio',           icon:'umbrella',      status:'complete', summary:'6 covers configured',       href:'coverage-studio.html' },
+      { id:'questionnaire',name:'Questionnaire Studio',      icon:'list-checks',   status:'complete', summary:'22 questions configured',   href:'questionnaire-studio.html' },
+      { id:'eligibility',  name:'Eligibility Studio',        icon:'user-check',    status:'complete', summary:'8 rules configured',        href:'eligibility-studio.html' },
+      { id:'rating',       name:'Rating & Pricing Studio',   icon:'calculator',    status:'complete', summary:'8 rate tables',             href:'rating-studio.html' },
+      { id:'underwriting', name:'Underwriting Rules Studio', icon:'shield-check',  status:'complete', summary:'11 rules configured',       href:'underwriting-studio.html' },
+      { id:'distribution', name:'Distribution Studio',       icon:'tree-structure',status:'partial',  summary:'2 of 3 channels',           href:'distribution-studio.html' },
+      { id:'document',     name:'Document Studio',           icon:'file-text',     status:'complete', summary:'4 documents',               href:'document-studio.html' }
+    ],
+    governance:[
+      { gate:'Product Owner',  approver:'Anika Sharma',  action:'Approved', date:'20-Aug-2026', comment:'Ready for actuarial review.' },
+      { gate:'Actuarial',      approver:'Rajan Mehta',   action:'Pending',  date:'—',           comment:'—' },
+      { gate:'Underwriting',   approver:'—',             action:'Pending',  date:'—',           comment:'—' },
+      { gate:'Compliance',     approver:'—',             action:'Pending',  date:'—',           comment:'—' },
+      { gate:'Ops/Tech',       approver:'—',             action:'Pending',  date:'—',           comment:'—' }
+    ],
+    checklist:[
+      { studio:'Coverage Studio',          status:'done', note:'6 covers' },
+      { studio:'Questionnaire Studio',     status:'done', note:'22 questions' },
+      { studio:'Eligibility Studio',       status:'done', note:'8 rules' },
+      { studio:'Rating & Pricing Studio',  status:'done', note:'8 rate tables' },
+      { studio:'Underwriting Rules Studio',status:'done', note:'11 rules' },
+      { studio:'Distribution Studio',      status:'warn', note:'2 of 3 channels' },
+      { studio:'Document Studio',          status:'done', note:'4 documents' }
+    ],
+    completion: 85,
+    lastSim:{ scenario:'SME — Retail Unit $500k Contents', date:'19-Aug-2026', passed:true, premium:'$3,840', rulesEval:11, referrals:1, declines:0 }
+  }
+};
+
+const FAMILY_COLORS = {
+  Motor:'#1A4F8A', Health:'#15803D', Property:'#B45309',
+  Trucking:'#475569', Cyber:'#6D28D9', 'Workers Compensation':'#C2410C',
+  Marine:'#0369A1', Travel:'#7C3AED', Life:'#0D9488', Liability:'#DC2626'
+};
+
+/* ──────────────────────────────────────────────────────────
+   STATE
+────────────────────────────────────────────────────────── */
+let currentProduct = null;
+let activeVersion  = null;
+let activeTab      = 'overview';
+let editMode       = false;
+let dirtyState     = false;
+
+/* ──────────────────────────────────────────────────────────
+   INIT
+────────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id') || 'PRD-001';
+  const hash = location.hash.replace('#','') || 'overview';
+  activeTab = hash;
+
+  currentProduct = PRODUCTS_DETAIL[id] || PRODUCTS_DETAIL['PRD-001'];
+  activeVersion  = params.get('version') || currentProduct.activeVersion;
+
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label: currentProduct.name, href:`product-detail.html?id=${currentProduct.id}` }
+  ]);
+
+  renderPage();
+});
+
+/* ──────────────────────────────────────────────────────────
+   RENDER
+────────────────────────────────────────────────────────── */
+function renderPage() {
+  const p = currentProduct;
+  const fColor = FAMILY_COLORS[p.family] || 'var(--color-brand)';
+  const ver = p.versions.find(v=>v.label===activeVersion) || p.versions[0];
+
+  document.title = `${p.name} — Product Studio | VeriDex`;
+
+  // Breadcrumb update
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label: p.name, href:`product-detail.html?id=${p.id}` },
+    { label: `v${activeVersion}`, href:`product-detail.html?id=${p.id}&version=${activeVersion}` }
+  ]);
+
+  const isDraft     = ver.status === 'draft';
+  const isPublished = ver.status === 'published';
+  const isReview    = ver.status === 'review';
+  const isApproved  = ver.status === 'approved';
+
+  // Header band actions
+  let actions = '';
+  if (isDraft) {
+    actions = `
+      <button class="btn btn-primary" onclick="handleSubmitReview()">Submit for Review</button>
+      <button class="btn btn-secondary" onclick="openCloneVersionModal()">Clone Version</button>
+      <button class="btn btn-ghost" onclick="openCompareModal()">Compare Versions</button>
+      <button class="btn btn-danger" onclick="openDeleteDraftModal('${p.id}','${ver.label}')">Delete Draft</button>`;
+  } else if (isPublished) {
+    actions = `
+      <button class="btn btn-primary" onclick="openCloneVersionModal()">Clone Version</button>
+      <button class="btn btn-ghost" onclick="openRuntimeApiModal()">View Runtime API</button>`;
+  } else if (isReview || isApproved) {
+    actions = `
+      <button class="btn btn-secondary" onclick="openCloneVersionModal()">Clone Version</button>
+      <button class="btn btn-ghost" onclick="openCompareModal()">Compare Versions</button>`;
+  }
+  actions += `
+    <div class="dropdown" id="more-dd">
+      <button class="btn btn-secondary" onclick="toggleDD('more-menu')" aria-label="More options">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M140 128a12 12 0 11-12-12 12 12 0 0112 12zm56-12a12 12 0 100 24 12 12 0 000-24zm-136 0a12 12 0 100 24 12 12 0 000-24z" fill="currentColor"/></svg>
+        More
+      </button>
+      <div class="dropdown-menu hidden" id="more-menu">
+        <div class="dropdown-item" onclick="window.location.href='audit-log.html?product=${p.id}'">View Audit Log</div>
+        <div class="dropdown-item" onclick="PS.actionResult('info','Export','Exporting product definition…')">Export Definition</div>
+        <div class="dropdown-sep"></div>
+        ${isDraft ? `<div class="dropdown-item danger" onclick="openDeleteDraftModal('${p.id}','${ver.label}')">Delete Draft</div>` : ''}
+        <div class="dropdown-item danger" onclick="PS.actionResult('warning','Archive','Archive feature requires admin role.')">Archive Product</div>
+      </div>
+    </div>`;
+
+  // Completion ring
+  const pct = p.completion;
+  const r = 28, circ = 2*Math.PI*r;
+  const dash = (pct/100)*circ;
+  const ringColor = pct===100 ? 'var(--color-success)' : pct>60 ? 'var(--color-brand)' : 'var(--color-warning)';
+
+  // Checklist
+  const checklistHTML = p.checklist.map(c => {
+    const icon = c.status==='done'
+      ? `<svg class="check-icon check-done" width="16" height="16" viewBox="0 0 256 256"><path fill="currentColor" d="M173.66 98.34a8 8 0 010 11.32l-56 56a8 8 0 01-11.32 0l-24-24a8 8 0 0111.32-11.32L112 148.69l50.34-50.35a8 8 0 0111.32 0zM232 128A104 104 0 1128 128a104 104 0 01208 0zm-16 0a88 88 0 10-176 0 88 88 0 00176 0z"/></svg>`
+      : c.status==='warn'
+      ? `<svg class="check-icon check-warn" width="16" height="16" viewBox="0 0 256 256"><path fill="currentColor" d="M236.8 188.09L149.35 36.22a24.76 24.76 0 00-42.7 0L19.2 188.09a23.51 23.51 0 000 23.72A24.35 24.35 0 0040.55 224h174.9a24.35 24.35 0 0021.33-12.19 23.51 23.51 0 00.02-23.72zM120 144v-40a8 8 0 0116 0v40a8 8 0 01-16 0zm20 36a12 12 0 11-12-12 12 12 0 0112 12z"/></svg>`
+      : `<svg class="check-icon check-empty" width="16" height="16" viewBox="0 0 256 256"><circle cx="128" cy="128" r="96" stroke="currentColor" stroke-width="16" fill="none"/></svg>`;
+    return `<div class="checklist-item">${icon}<span class="checklist-studio">${c.studio}</span><span class="checklist-note">${c.note}</span></div>`;
+  }).join('');
+
+  // Governance strip
+  const govStripHTML = p.governance.map(g => {
+    const isDone = g.action==='Approved';
+    const isPend = g.action==='Pending';
+    const isRej  = g.action==='Rejected';
+    const icon = isDone
+      ? `<svg class="gov-icon" width="16" height="16" viewBox="0 0 256 256" fill="none" style="color:var(--color-success)"><path fill="currentColor" d="M173.66 98.34a8 8 0 010 11.32l-56 56a8 8 0 01-11.32 0l-24-24a8 8 0 0111.32-11.32L112 148.69l50.34-50.35a8 8 0 0111.32 0zM232 128A104 104 0 1128 128a104 104 0 01208 0zm-16 0a88 88 0 10-176 0 88 88 0 00176 0z"/></svg>`
+      : isPend
+      ? `<svg class="gov-icon" width="16" height="16" viewBox="0 0 256 256" fill="none" style="color:var(--color-warning)"><path fill="currentColor" d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z"/></svg>`
+      : `<svg class="gov-icon" width="16" height="16" viewBox="0 0 256 256" fill="none" style="color:var(--color-danger)"><path fill="currentColor" d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z"/></svg>`;
+    const detail = isDone ? `${g.approver} · ${g.date}` : isPend ? 'Awaiting sign-off' : `Rejected · ${g.date}`;
+    return `<div class="gov-item">${icon}<span class="gov-gate">${g.gate}</span><span class="gov-detail">${detail}</span></div>`;
+  }).join('');
+
+  document.getElementById('page-inner').innerHTML = `
+    <!-- Product Header Band -->
+    <div class="product-header-band" style="border-left-color:${fColor}">
+      <div class="phb-left">
+        <div class="phb-name-row">
+          <span class="family-badge" style="border-color:${fColor};color:${fColor}">${p.family}</span>
+          <h1 class="phb-name">${p.name}</h1>
+        </div>
+        <div class="phb-meta">
+          <span class="text-mono" style="font-size:12px">${p.id}</span>
+          <span class="phb-meta-sep">|</span>
+          <span>${p.family}</span>
+          <span class="phb-meta-sep">|</span>
+          <span>Owner: <strong>${p.owner}</strong></span>
+        </div>
+      </div>
+      <div class="phb-right">
+        <span class="badge badge-${ver.status} badge-lg" role="status">${PS.statusLabel(ver.status)}</span>
+        ${actions}
+      </div>
+    </div>
+
+    <!-- Version selector + Summary -->
+    <div class="detail-layout">
+      <!-- Left: Version Sidebar -->
+      <div class="version-sidebar card">
+        <div class="card-header" style="padding:var(--space-4) var(--space-5)">
+          <div class="version-sidebar-label">Versions</div>
+          <button class="btn btn-ghost btn-sm" onclick="openNewVersionModal()" id="new-version-btn">+ New</button>
+        </div>
+        <div class="card-body" style="padding:var(--space-3)">
+          <div class="version-list">
+            ${p.versions.map(v => `
+            <div class="version-item ${v.label===activeVersion?'active':''}" onclick="switchVersion('${v.label}')" id="ver-item-${v.label.replace(/\./g,'-')}">
+              <div class="version-dot"></div>
+              <div class="version-item-body">
+                <div class="version-label-row">
+                  <span class="version-label">v${v.label}</span>
+                  <span class="badge badge-${v.status}">${PS.statusLabel(v.status)}</span>
+                </div>
+                ${v.from ? `<div class="version-period">${v.from} — ${v.to||'Open'}</div>` : '<div class="version-period text-muted">Effective dates TBD</div>'}
+                <div class="version-by">by ${v.by}</div>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Active Version Summary -->
+      <div class="card summary-card">
+        <div class="card-header">
+          <div>
+            <div style="display:flex;align-items:center;gap:var(--space-3)">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--color-ink)">v${activeVersion}</span>
+              <span class="badge badge-${ver.status} badge-lg" role="status">${PS.statusLabel(ver.status)}</span>
+            </div>
+            ${ver.from ? `<div style="font-size:13px;color:var(--color-muted);margin-top:4px">Effective: ${ver.from} → ${ver.to||'Open-ended'}</div>` : '<div style="font-size:13px;color:var(--color-muted);margin-top:4px">Effective dates not yet set</div>'}
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:var(--color-muted);margin-bottom:4px">Completion</div>
+            <div style="font-size:24px;font-weight:700;color:${pct===100?'var(--color-success)':pct>60?'var(--color-brand)':'var(--color-warning)'}">${pct}%</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="completion-row" style="margin-bottom:var(--space-5)">
+            <div class="ring-chart">
+              <svg width="72" height="72" viewBox="0 0 72 72">
+                <circle cx="36" cy="36" r="${r}" stroke="var(--color-border)" stroke-width="6" fill="none"/>
+                <circle cx="36" cy="36" r="${r}" stroke="${ringColor}" stroke-width="6" fill="none"
+                  stroke-dasharray="${dash} ${circ}" stroke-linecap="round"/>
+              </svg>
+              <div class="ring-label">${pct}%</div>
+            </div>
+            <div class="checklist">${checklistHTML}</div>
+          </div>
+
+          <div style="font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--color-muted);margin-bottom:var(--space-3)">Governance Status</div>
+          <div class="gov-strip">${govStripHTML}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tabs" role="tablist" id="tab-bar">
+      ${['overview','studios','simulation','versions','governance','audit'].map(t => `
+      <button class="tab-btn ${activeTab===t?'active':''}" id="tab-${t}" onclick="switchTab('${t}')" role="tab" aria-selected="${activeTab===t}">${tabLabel(t)}</button>`).join('')}
+    </div>
+
+    <!-- Tab Content -->
+    <div id="tab-content"></div>
+  `;
+
+  renderTab(activeTab);
+  setupDropdownClose();
+}
+
+function tabLabel(t) {
+  return {overview:'Overview',studios:'Studios',simulation:'Simulation',versions:'Versions',governance:'Governance',audit:'Audit'}[t]||t;
+}
+
+/* ──────────────────────────────────────────────────────────
+   TAB SWITCHING
+────────────────────────────────────────────────────────── */
+function switchTab(tab) {
+  if (dirtyState && !confirm('You have unsaved changes. Leave this tab?')) return;
+  dirtyState = false; editMode = false;
+  activeTab = tab;
+  history.replaceState(null,'',`#${tab}`);
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.id===`tab-${tab}`);
+    b.setAttribute('aria-selected', b.id===`tab-${tab}`);
+  });
+  renderTab(tab);
+}
+
+function renderTab(tab) {
+  const content = document.getElementById('tab-content');
+  if (!content) return;
+  if (tab==='overview')    renderOverview(content);
+  else if (tab==='studios')     renderStudios(content);
+  else if (tab==='simulation')  renderSimulation(content);
+  else if (tab==='versions')    renderVersionsTab(content);
+  else if (tab==='governance')  renderGovernance(content);
+  else if (tab==='audit')       renderAudit(content);
+}
+
+/* ──────────────────────────────────────────────────────────
+   TAB 1 — OVERVIEW
+────────────────────────────────────────────────────────── */
+function renderOverview(el) {
+  const p = currentProduct;
+  const isPublished = p.versions.find(v => v.label === activeVersion)?.status === 'published';
+
+  el.innerHTML = `
+    ${isPublished ? `<div class="readonly-banner">
+      <span>📌 Published versions are read-only. <strong>Clone this version to make edits.</strong></span>
+      <button class="btn btn-primary btn-sm" onclick="openCloneVersionModal()">Clone & Edit</button>
+    </div>` : ''}
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title">Product Identity</div>
+        <div style="display:flex;gap:var(--space-3)">
+          ${!isPublished ? `<button class="btn btn-secondary btn-sm" id="edit-toggle-btn" onclick="toggleEditMode()">${editMode?'Cancel':'Edit Details'}</button>
+          ${editMode ? `<button class="btn btn-primary btn-sm" onclick="saveOverview()">Save Changes</button>` : ''}` : ''}
+        </div>
+      </div>
+      <div class="card-body">
+        ${editMode ? `<div id="dirty-banner" class="dirty-banner hidden">
+          <span>⚠ You have unsaved changes</span>
+          <div><button class="btn btn-secondary btn-sm" onclick="cancelEdit()">Discard</button></div>
+        </div>` : ''}
+        <div class="detail-grid">
+          ${detailField('Product Family', p.family, false, 'w-family-edit', 'select', PS.data.productFamilies)}
+          ${detailField('Market Segment', p.segment, false, 'w-segment-edit', 'select', ['Personal Lines','Commercial Lines','Group','Specialty'])}
+          ${detailField('Product Name', p.name, false, 'w-name-edit', 'text')}
+          ${detailField('Internal Code', p.code, true, 'w-code-edit', 'text')}
+          ${detailField('Risk Type', p.riskType, false, 'w-risktype-edit', 'text')}
+          ${detailField('Product Owner', p.owner, false, 'w-owner-edit', 'select', ['Anika Sharma','Rajan Mehta','Sunita Pillai','Priya Varghese'])}
+          <div class="detail-field" style="grid-column:1/-1">
+            <label>Target Distribution</label>
+            <div class="field-value">
+              <div class="jurisdiction-chips">${p.distribution.map(d=>`<span class="jur-chip">${d}</span>`).join('')}</div>
+            </div>
+          </div>
+          <div class="detail-field" style="grid-column:1/-1">
+            <label>Jurisdictions</label>
+            <div class="field-value">
+              <div class="jurisdiction-chips">${p.jurisdictions.map(j=>`<span class="jur-chip">${j}</span>`).join('')}</div>
+            </div>
+          </div>
+          <div class="detail-field" style="grid-column:1/-1">
+            <label>Description</label>
+            ${editMode
+              ? `<textarea class="form-control" rows="3" onchange="markDirty()">${p.description}</textarea>`
+              : `<div class="field-value">${p.description}</div>`}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Version Notes</div>
+      </div>
+      <div class="card-body">
+        ${editMode && !isPublished
+          ? `<textarea id="w-notes-edit" class="form-control" rows="4" onchange="markDirty()">${p.notes}</textarea>`
+          : `<p style="font-size:14px;line-height:22px;color:var(--color-muted)">${p.notes}</p>`}
+      </div>
+    </div>`;
+}
+
+function detailField(label, value, isMono, id, type='text', opts=[]) {
+  const mono = isMono ? ' mono' : '';
+  if (!editMode) {
+    return `<div class="detail-field"><label>${label}</label><div class="field-value${mono}">${value}</div></div>`;
+  }
+  if (type==='select') {
+    return `<div class="detail-field"><label>${label}</label>
+      <select id="${id}" class="form-control" onchange="markDirty()" style="height:36px">
+        ${opts.map(o=>`<option ${o===value?'selected':''}>${o}</option>`).join('')}
+      </select></div>`;
+  }
+  const systemGenerated = /internal code|system id/i.test(label);
+  return `<div class="detail-field"><label>${label}</label>
+    <input type="text" id="${id}" class="form-control" value="${value}" ${isMono?'style="font-family:monospace"':''} ${systemGenerated?'data-system-generated readonly aria-readonly="true"':'onchange="markDirty()"'}>
+    ${systemGenerated?'<span class="form-help">System generated. Cannot be changed.</span>':''}</div>`;
+}
+
+function toggleEditMode() {
+  editMode = !editMode;
+  renderOverview(document.getElementById('tab-content'));
+}
+function cancelEdit() { editMode=false; dirtyState=false; renderOverview(document.getElementById('tab-content')); }
+function markDirty() { dirtyState=true; const b=document.getElementById('dirty-banner'); if(b) b.classList.remove('hidden'); }
+function saveOverview() {
+  const name = document.getElementById('w-name-edit')?.value;
+  if (name) currentProduct.name = name;
+  editMode=false; dirtyState=false;
+  renderPage();
+  PS.actionResult('success','Changes saved','Product details updated successfully.');
+}
+
+/* ──────────────────────────────────────────────────────────
+   TAB 2 — STUDIOS
+────────────────────────────────────────────────────────── */
+function renderStudios(el) {
+  const p = currentProduct;
+  const isPublished = p.versions.find(v => v.label === activeVersion)?.status === 'published';
+  el.innerHTML = `
+    ${isPublished ? `<div class="callout callout-info mb-6">
+      <div class="callout-body">
+        <div class="callout-title">Read-only mode</div>
+        This version is published. Studios open in read-only mode. <a href="#" onclick="openCloneVersionModal();return false">Clone this version</a> to make changes.
+      </div>
+    </div>` : ''}
+    <div class="studio-grid">
+      ${p.studios.map(s => {
+        const badgeCls = s.status==='complete'?'studio-badge-complete':s.status==='partial'?'studio-badge-partial':'studio-badge-missing';
+        const badgeLabel = s.status==='complete'?'Complete':s.status==='partial'?'Partial':'Not Started';
+        return `
+        <div class="studio-card">
+          <div class="studio-card-top">
+            <div class="studio-icon-wrap">${PS.nav.icon(s.icon, 20)}</div>
+            <span class="badge ${badgeCls}">${badgeLabel}</span>
+          </div>
+          <div>
+            <div class="studio-name">${s.name}</div>
+            <div class="studio-summary">${s.summary}</div>
+          </div>
+          <div style="margin-top:auto">
+            <a href="${s.href}?product=${p.id}&version=${activeVersion}" class="btn btn-${isPublished?'secondary':'primary'} btn-sm" style="width:100%;justify-content:center">
+              Open Studio →
+            </a>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+/* ──────────────────────────────────────────────────────────
+   TAB 3 — SIMULATION
+────────────────────────────────────────────────────────── */
+function renderSimulation(el) {
+  const p = currentProduct;
+  const sim = p.lastSim;
+  el.innerHTML = `
+    <div class="layout-cols layout-8-4" style="display:grid;grid-template-columns:2fr 1fr;gap:var(--space-5)">
+      <div>
+        <div class="card mb-5">
+          <div class="card-header">
+            <div class="card-title">Run Simulation</div>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label" for="sim-scenario">Select Scenario</label>
+              <select id="sim-scenario" class="form-control">
+                <option>Standard Quote — 35yo Male, No Claims</option>
+                <option>High Risk — 22yo Male, 2 Prior Claims</option>
+                <option>Senior Driver — 68yo Female, Full NCD</option>
+                <option>Commercial Use Query — Delivery Vehicle</option>
+                <option>Custom Scenario…</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:var(--space-3)">
+              <button class="btn btn-primary" onclick="runSimulation()">
+                <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path fill="currentColor" d="M221.69 199.77L160 96.92V40h8a8 8 0 000-16H88a8 8 0 000 16h8v56.92L34.31 199.77A16 16 0 0048 224h160a16 16 0 0013.69-24.23z"/></svg>
+                Run Simulation
+              </button>
+              <a href="simulation-studio.html?product=${p.id}" class="btn btn-secondary">Open Full Simulation Studio →</a>
+            </div>
+          </div>
+        </div>
+
+        ${sim ? `
+        <div class="sim-result-card">
+          <div class="sim-result-header">
+            <div>
+              <div style="font-size:14px;font-weight:600">Last Simulation Result</div>
+              <div style="font-size:12px;color:var(--color-muted)">${sim.scenario} · ${sim.date}</div>
+            </div>
+            <span class="badge ${sim.passed?'badge-published':'badge-review'}" style="font-size:12px">${sim.passed?'PASSED':'FAILED'}</span>
+          </div>
+          <div class="sim-metrics-grid">
+            <div class="sim-metric">
+              <div class="sim-metric-value" style="color:var(--color-brand)">${sim.premium}</div>
+              <div class="sim-metric-label">Gross Premium</div>
+            </div>
+            <div class="sim-metric">
+              <div class="sim-metric-value">${sim.rulesEval}</div>
+              <div class="sim-metric-label">Rules Evaluated</div>
+            </div>
+            <div class="sim-metric">
+              <div class="sim-metric-value" style="color:${sim.referrals?'var(--color-warning)':'var(--color-success)'}">${sim.referrals}</div>
+              <div class="sim-metric-label">Referrals</div>
+            </div>
+            <div class="sim-metric">
+              <div class="sim-metric-value" style="color:${sim.declines?'var(--color-danger)':'var(--color-success)'}">${sim.declines}</div>
+              <div class="sim-metric-label">Declines</div>
+            </div>
+          </div>
+          <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-border)">
+            <a href="simulation-studio.html?product=${p.id}" class="btn btn-ghost btn-sm">View Full Simulation Report →</a>
+          </div>
+        </div>` : `
+        <div class="card">
+          <div class="empty-state" style="padding:32px">
+            <div class="empty-state-title">No simulations run yet</div>
+            <div class="empty-state-desc">Run a simulation to see premium outputs and rule evaluation results here.</div>
+          </div>
+        </div>`}
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Saved Scenarios</div></div>
+          <div class="card-body" style="padding:0">
+            ${['Standard Quote — 35yo Male, No Claims','High Risk — 22yo, 2 Claims','Senior Driver — 68yo, Full NCD'].map((s,i) => `
+            <div style="padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center">
+              <div style="font-size:13px;font-weight:500">${s}</div>
+              <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Scenario loaded','Scenario loaded. Click Run Simulation.')">Load</button>
+            </div>`).join('')}
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-ghost btn-sm" onclick="PS.actionResult('info','Scenario','Scenario builder coming soon.')">+ New Scenario</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function runSimulation() {
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 256 256" class="spin" style="animation:spin .8s linear infinite"><circle cx="128" cy="128" r="96" stroke="white" stroke-width="16" fill="none" stroke-dasharray="200 100"/></svg> Running…`;
+  setTimeout(() => {
+    btn.disabled = false; btn.innerHTML = 'Run Simulation';
+    PS.actionResult('success','Simulation complete','All 9 rules evaluated. Premium: $1,248. No referrals or declines.');
+  }, 2000);
+}
+
+/* ──────────────────────────────────────────────────────────
+   TAB 4 — VERSIONS
+────────────────────────────────────────────────────────── */
+function renderVersionsTab(el) {
+  const p = currentProduct;
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Version History</div>
+        <button class="btn btn-primary btn-sm" onclick="openNewVersionModal()">+ New Version</button>
+      </div>
+      <div class="table-wrap">
+        <table aria-label="Version history">
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th class="text-center">Status</th>
+              <th>Effective Period</th>
+              <th>Published By</th>
+              <th>Published On</th>
+              <th class="text-center">Approval Gates</th>
+              <th class="text-center">Simulation</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${p.versions.map(v => {
+              const simColor = v.sim==='Passed'?'var(--color-success)':v.sim==='Failed'?'var(--color-danger)':'var(--color-muted)';
+              return `
+              <tr ${v.label===activeVersion?'class="selected"':''}>
+                <td class="mono"><a href="?id=${p.id}&version=${v.label}" onclick="event.preventDefault();switchVersion('${v.label}')">${v.label}</a></td>
+                <td class="text-center"><span class="badge badge-${v.status}">${PS.statusLabel(v.status)}</span></td>
+                <td style="font-size:13px">${v.from?`${v.from} — ${v.to||'Open'}`:'— —'}</td>
+                <td style="font-size:13px">${v.by}</td>
+                <td style="font-size:13px">${v.on}</td>
+                <td class="text-center" style="font-size:13px">${v.gates}/5</td>
+                <td class="text-center" style="font-size:13px;color:${simColor}">${v.sim}</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="switchVersion('${v.label}')">View</button>
+                    <button class="btn btn-ghost btn-sm" onclick="openCloneVersionModal()">Clone</button>
+                    <div class="dropdown" style="display:inline-block">
+                      <button class="btn btn-ghost btn-sm" onclick="toggleDD('compare-menu-${v.label.replace(/\./g,'-')}')">Compare ▾</button>
+                      <div class="dropdown-menu hidden" id="compare-menu-${v.label.replace(/\./g,'-')}">
+                        ${p.versions.filter(x=>x.label!==v.label).map(x=>`
+                        <div class="dropdown-item" onclick="openCompareModal('${v.label}','${x.label}')">Compare with v${x.label}</div>`).join('')}
+                        ${p.versions.length<2?'<div class="dropdown-item" style="color:var(--color-muted);cursor:default">No other versions</div>':''}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/* ──────────────────────────────────────────────────────────
+   TAB 5 — GOVERNANCE
+────────────────────────────────────────────────────────── */
+function renderGovernance(el) {
+  const p = currentProduct;
+  const gateNames = ['Product Owner','Actuarial','Underwriting','Compliance','Ops/Tech'];
+
+  // Build approval chain
+  const approvedCount = p.governance.filter(g=>g.action==='Approved').length;
+  const chainHTML = p.governance.map((g,i) => {
+    const isDone = g.action==='Approved';
+    const isPend = g.action==='Pending';
+    const isRej  = g.action==='Rejected';
+    const circCls = isDone?'done':isPend?'pending':isRej?'rejected':'';
+    const icon = isDone?'✓':isPend?'⏳':isRej?'✕':(i+1);
+    const connCls = isDone?'done':'';
+    return `
+      <div class="approval-node">
+        <div class="approval-circle ${circCls}">${icon}</div>
+        <div class="approval-node-label">${g.gate}</div>
+      </div>
+      ${i<p.governance.length-1 ? `<div class="approval-connector ${connCls}"></div>` : ''}`;
+  }).join('') + `
+    <div class="approval-connector ${approvedCount===5?'done':''}"></div>
+    <div class="approval-node">
+      <div class="approval-circle ${approvedCount===5?'final':''}">🚀</div>
+      <div class="approval-node-label">Published</div>
+    </div>`;
+
+  const isPublished = p.status==='published';
+
+  el.innerHTML = `
+    <div class="approval-chain" role="group" aria-label="Approval pipeline">${chainHTML}</div>
+
+    <div class="card mb-5">
+      <div class="card-header"><div class="card-title">Approval Gate Log</div></div>
+      <div class="table-wrap">
+        <table aria-label="Governance log">
+          <thead>
+            <tr><th>Gate</th><th>Approver</th><th class="text-center">Action</th><th>Date</th><th>Comments</th><th style="width:160px">Actions</th></tr>
+          </thead>
+          <tbody>
+            ${p.governance.map((g,i) => {
+              const isDone=g.action==='Approved', isPend=g.action==='Pending', isRej=g.action==='Rejected';
+              const actColor=isDone?'var(--color-success)':isPend?'var(--color-warning)':'var(--color-danger)';
+              const actBg=isDone?'#DCFCE7':isPend?'#FEF3C7':'#FEE2E2';
+              return `<tr>
+                <td style="font-weight:500">${g.gate}</td>
+                <td style="font-size:13px">${g.approver}</td>
+                <td class="text-center">
+                  <span style="display:inline-flex;height:20px;padding:0 8px;border-radius:4px;font-size:11px;font-weight:600;align-items:center;background:${actBg};color:${actColor};text-transform:uppercase">${g.action}</span>
+                </td>
+                <td style="font-size:13px">${g.date}</td>
+                <td style="font-size:13px;color:var(--color-muted);max-width:220px">${g.comment}</td>
+                <td>
+                  ${isPend && !isPublished ? `
+                  <div class="table-actions">
+                    <button class="btn btn-primary btn-sm" onclick="approveGate(${i})">Approve</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectGate(${i})">Reject</button>
+                    <button class="btn btn-ghost btn-sm" onclick="commentGate(${i})">Comment</button>
+                  </div>` : ''}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${(p.status==='approved') ? `
+    <div class="card">
+      <div class="card-header"><div class="card-title">Schedule Publication</div></div>
+      <div class="card-body">
+        <div style="display:flex;gap:var(--space-5);align-items:flex-end">
+          <div class="form-group" style="margin:0;flex:1">
+            <label class="form-label" for="pub-date">Publication Date & Time</label>
+            <input type="datetime-local" id="pub-date" class="form-control">
+          </div>
+          <button class="btn btn-primary" onclick="schedulePublication()">Schedule Publication</button>
+          <button class="btn btn-danger" onclick="publishNow()">Publish Now</button>
+        </div>
+        <span class="form-help" style="margin-top:8px;display:block">Publisher role required. Publication will make this version live immediately.</span>
+      </div>
+    </div>` : ''}`;
+}
+
+function approveGate(i) {
+  PS.openModal(`
+    <div class="modal-header"><h2 class="modal-title">Approve Gate: ${currentProduct.governance[i].gate}</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-success" style="margin-bottom:var(--space-4)"><div class="callout-body">You are approving the <strong>${currentProduct.governance[i].gate}</strong> gate for <strong>${currentProduct.name} v${activeVersion}</strong>.</div></div>
+      <div class="form-group"><label class="form-label" for="approve-comment">Approval Comments (optional)</label>
+        <textarea id="approve-comment" class="form-control" rows="3" placeholder="Add your approval rationale…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="executeApprove(${i})">Confirm Approval</button>
+    </div>
+  `, 'modal-sm');
+}
+function executeApprove(i) {
+  const comment = document.getElementById('approve-comment')?.value || 'Approved.';
+  currentProduct.governance[i].action = 'Approved';
+  currentProduct.governance[i].approver = PS.data.currentUser.name;
+  currentProduct.governance[i].date = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'-');
+  currentProduct.governance[i].comment = comment;
+  PS.closeModal();
+  PS.actionResult('success','Gate approved',`${currentProduct.governance[i].gate} gate approved.`);
+  renderGovernance(document.getElementById('tab-content'));
+}
+function rejectGate(i)  { PS.actionResult('warning','Gate rejected',`${currentProduct.governance[i].gate} gate rejected.`); }
+function commentGate(i) { PS.actionResult('info','Comment added','Your comment has been added to the governance log.'); }
+function schedulePublication() { PS.actionResult('success','Publication scheduled','Product will go live at the scheduled date and time.'); }
+function publishNow() { PS.actionResult('success','Product published',`${currentProduct.name} v${activeVersion} is now live.`); }
+
+/* ──────────────────────────────────────────────────────────
+   TAB 6 — AUDIT
+────────────────────────────────────────────────────────── */
+function renderAudit(el) {
+  const auditRows = [
+    { ts:'22-Aug-2026 20:45', user:'Priya Varghese', action:'PUBLISH',  field:'Status',                  oldVal:'Approved', newVal:'Published', version:'2026.04' },
+    { ts:'22-Mar-2026 11:30', user:'Marcus Lee',     action:'APPROVE',  field:'Governance Gate — Ops/Tech',oldVal:'Pending', newVal:'Approved',  version:'2026.04' },
+    { ts:'20-Mar-2026 15:10', user:'Sunita Pillai',  action:'APPROVE',  field:'Governance Gate — UW',     oldVal:'Pending', newVal:'Approved',   version:'2026.04' },
+    { ts:'18-Mar-2026 09:55', user:'Rajan Mehta',    action:'APPROVE',  field:'Governance Gate — Actuarial',oldVal:'Pending',newVal:'Approved',   version:'2026.04' },
+    { ts:'15-Mar-2026 14:20', user:'Anika Sharma',   action:'SUBMIT',   field:'Status',                  oldVal:'Draft',    newVal:'In Review',  version:'2026.04' },
+    { ts:'12-Mar-2026 10:00', user:'Anika Sharma',   action:'EDIT',     field:'Coverage — Own Damage Deductible', oldVal:'$500', newVal:'$300',  version:'2026.04' },
+    { ts:'10-Mar-2026 16:40', user:'Rajan Mehta',    action:'EDIT',     field:'Rating — Base Rate Factor', oldVal:'1.00',  newVal:'1.08',        version:'2026.04' },
+    { ts:'05-Mar-2026 11:15', user:'Anika Sharma',   action:'CREATE',   field:'Version',                 oldVal:'—',        newVal:'2026.04',    version:'2026.04' }
+  ];
+  const actionColors = { PUBLISH:'var(--color-brand)', APPROVE:'var(--color-success)', SUBMIT:'var(--color-warning)', EDIT:'var(--color-muted)', CREATE:'var(--color-info)' };
+  const actionBg     = { PUBLISH:'#EBF1FA', APPROVE:'#DCFCE7', SUBMIT:'#FEF3C7', EDIT:'#F1F5F9', CREATE:'#E0F2FE' };
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-title">Audit Log</div>
+          <div class="card-subtitle">All changes to ${currentProduct.name}</div>
+        </div>
+        <a href="audit-log.html?product=${currentProduct.id}" class="btn btn-ghost btn-sm">View Full Audit Log →</a>
+      </div>
+      <div class="table-wrap">
+        <table aria-label="Audit log">
+          <thead>
+            <tr><th>Timestamp</th><th>User</th><th class="text-center">Action</th><th>Field / Section</th><th>Old Value</th><th>New Value</th><th>Version</th></tr>
+          </thead>
+          <tbody>
+            ${auditRows.map(r => `
+            <tr>
+              <td class="mono" style="font-size:12px;color:var(--color-muted)">${r.ts}</td>
+              <td style="font-size:13px;font-weight:500">${r.user}</td>
+              <td class="text-center">
+                <span class="audit-action-badge" style="background:${actionBg[r.action]||'#F1F5F9'};color:${actionColors[r.action]||'var(--color-muted)'}">${r.action}</span>
+              </td>
+              <td style="font-size:13px">${r.field}</td>
+              <td style="font-size:13px;color:var(--color-danger)">${r.oldVal}</td>
+              <td style="font-size:13px;color:var(--color-success);font-weight:500">${r.newVal}</td>
+              <td class="mono" style="font-size:12px">${r.version}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer">
+        <span class="pagination-info">Showing 1–8 of 8</span>
+        <a href="audit-log.html?product=${currentProduct.id}" class="btn btn-ghost btn-sm">View Full Audit Log →</a>
+      </div>
+    </div>`;
+}
+
+/* ──────────────────────────────────────────────────────────
+   MODALS
+────────────────────────────────────────────────────────── */
+function handleSubmitReview() {
+  PS.openModal(`
+    <div class="modal-header"><h2 class="modal-title">Submit for Review</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-warning" style="margin-bottom:var(--space-4)">
+        <div class="callout-body"><div class="callout-title">Incomplete configuration</div>
+          Rating Studio has no base rate configured. Submission is still possible but reviewers will be notified of incomplete items.
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label" for="review-note">Submission Notes</label>
+        <textarea id="review-note" class="form-control" rows="3" placeholder="Describe what's included in this version and any notes for reviewers…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="PS.closeModal();PS.actionResult('success','Submitted for review','Product sent to governance workflow.')">Submit for Review</button>
+    </div>
+  `, 'modal-sm');
+}
+
+function openNewVersionModal() {
+  PS.openModal(`
+    <div class="modal-header"><h2 class="modal-title">New Version</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label" for="nv-label">Version Label <span class="required">*</span></label>
+        <input type="text" id="nv-label" class="form-control" value="${new Date().getFullYear()}.${String(new Date().getMonth()+1).padStart(2,'0')}" style="font-family:'IBM Plex Mono',monospace">
+        <span class="form-help">Suggested: YYYY.MM format. e.g. 2026.09</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group"><label class="form-label" for="nv-from">Effective From <span class="required">*</span></label>
+          <input type="date" id="nv-from" class="form-control"></div>
+        <div class="form-group"><label class="form-label" for="nv-to">Effective To</label>
+          <input type="date" id="nv-to" class="form-control">
+          <span class="form-help">Leave blank for open-ended.</span></div>
+      </div>
+      <div class="form-group"><label class="form-label" for="nv-base">Base this version on</label>
+        <select id="nv-base" class="form-control">
+          <option value="">Start from scratch</option>
+          ${currentProduct.versions.map(v=>`<option>v${v.label} (${PS.statusLabel(v.status)})</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label" for="nv-note">Change Summary</label>
+        <textarea id="nv-note" class="form-control" rows="3" placeholder="What's changing in this version?"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createNewVersion()">Create Version</button>
+    </div>
+  `);
+}
+function createNewVersion() {
+  const label = document.getElementById('nv-label')?.value.trim();
+  if (!label) { PS.actionResult('error','Required','Version label is required.'); return; }
+  PS.closeModal();
+  PS.actionResult('success','Version created',`v${label} created as Draft. You can now configure studios.`);
+}
+
+function openCloneVersionModal() {
+  PS.openModal(`
+    <div class="modal-header"><h2 class="modal-title">Clone Version</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-info" style="margin-bottom:var(--space-4)">
+        <div class="callout-body">All studio configuration from <strong>v${activeVersion}</strong> will be copied to the new Draft version. Governance approvals are not carried over.</div>
+      </div>
+      <div class="form-group"><label class="form-label" for="cv-label">New Version Label <span class="required">*</span></label>
+        <input type="text" id="cv-label" class="form-control" value="${new Date().getFullYear()}.${String(new Date().getMonth()+1).padStart(2,'0')}" style="font-family:'IBM Plex Mono',monospace">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group"><label class="form-label" for="cv-from">Effective From</label><input type="date" id="cv-from" class="form-control"></div>
+        <div class="form-group"><label class="form-label" for="cv-to">Effective To</label><input type="date" id="cv-to" class="form-control"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="executeClone()">Clone Version</button>
+    </div>
+  `, 'modal-sm');
+}
+function executeClone() {
+  const label = document.getElementById('cv-label')?.value.trim();
+  PS.closeModal();
+  PS.actionResult('success','Version cloned',`v${label} created as Draft with all configuration copied.`);
+}
+
+function openCompareModal(vA, vB) {
+  document.querySelectorAll('.dropdown-menu').forEach(m=>m.classList.add('hidden'));
+  const versions = currentProduct.versions.map(v=>v.label);
+  const selA = vA || versions[0];
+  const selB = vB || (versions[1]||versions[0]);
+
+  PS.openModal(`
+    <div class="modal-header"><h2 class="modal-title">Compare Versions</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="compare-selector">
+        <div class="form-group" style="margin:0"><label class="form-label">Version A</label>
+          <select id="cmp-a" class="form-control">
+            ${versions.map(v=>`<option ${v===selA?'selected':''}>${v}</option>`).join('')}
+          </select></div>
+        <div style="padding-top:20px;font-size:20px;color:var(--color-muted);text-align:center">↔</div>
+        <div class="form-group" style="margin:0"><label class="form-label">Version B</label>
+          <select id="cmp-b" class="form-control">
+            ${versions.map(v=>`<option ${v===selB?'selected':''}>${v}</option>`).join('')}
+          </select></div>
+      </div>
+
+      <div style="padding:var(--space-3) var(--space-4);background:var(--color-surface);border-radius:var(--radius-md);margin-bottom:var(--space-5);font-size:13px">
+        <strong>3 fields changed</strong>, <span style="color:var(--color-success)">1 added</span>, <span style="color:var(--color-danger)">0 removed</span>
+      </div>
+
+      <div class="panel-tabs">
+        ${['Coverage','Rating','Eligibility'].map((t,i)=>`<button class="panel-tab ${i===0?'active':''}" onclick="this.parentElement.querySelectorAll('.panel-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${t}</button>`).join('')}
+      </div>
+
+      <div>
+        <div class="diff-row">
+          <div class="diff-col diff-col-a">
+            <div class="diff-col-header">v2026.01</div>
+            <div><span class="diff-removed">Own Damage Deductible: $500</span></div>
+          </div>
+          <div class="diff-col diff-col-b">
+            <div class="diff-col-header">v2026.04</div>
+            <div><span class="diff-added">Own Damage Deductible: $300</span></div>
+          </div>
+        </div>
+        <div class="diff-row">
+          <div class="diff-col diff-col-a">
+            <div class="diff-col-header">v2026.01</div>
+            <div><span class="diff-removed">Geography: India only</span></div>
+          </div>
+          <div class="diff-col diff-col-b">
+            <div class="diff-col-header">v2026.04</div>
+            <div><span class="diff-added">Geography: India, UAE, UK</span></div>
+          </div>
+        </div>
+        <div class="diff-row">
+          <div class="diff-col diff-col-a">
+            <div class="diff-col-header">v2026.01</div>
+            <div style="color:var(--color-muted);font-style:italic">Add-on: Roadside Assistance — not present</div>
+          </div>
+          <div class="diff-col diff-col-b">
+            <div class="diff-col-header">v2026.04</div>
+            <div><span class="diff-added">Add-on: Roadside Assistance (new)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="PS.actionResult('info','Export','Downloading comparison report…')">Download Report</button>
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `, 'modal-lg');
+}
+
+function openRuntimeApiModal() {
+  const p = currentProduct;
+  const endpoint = `/api/v1/products/${p.id}/v${activeVersion}`;
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Runtime API — ${p.name}</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:var(--space-4)">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 6px;background:var(--color-success);color:#fff;border-radius:4px;font-weight:700">ACTIVE</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--color-ink);background:var(--color-surface);padding:4px 10px;border-radius:4px;border:1px solid var(--color-border);flex:1">${endpoint}</span>
+        <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard?.writeText(window.location.origin+'${endpoint}');PS.actionResult('success','Copied','Endpoint URL copied to clipboard.')">Copy URL</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Sample Rating Request (POST)</div>
+          <pre style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:12px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--color-ink);overflow-x:auto;margin:0">{
+  "productId": "${p.id}",
+  "version": "${activeVersion}",
+  "risk": {
+    "jurisdiction": "IN",
+    "driverAge": 32,
+    "vehicleAge": 3,
+    "insuredValue": 25000
+  },
+  "selectedCovers": [
+    "COV-OD",
+    "COV-TP"
+  ]
+}</pre>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Sample Rating Response (200 OK)</div>
+          <pre style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius-md);padding:12px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#166534;overflow-x:auto;margin:0">{
+  "status": "ELIGIBLE",
+  "quoteId": "QTE-2026-88192",
+  "currency": "INR",
+  "netPremium": 1248.00,
+  "tax": 224.64,
+  "grossPremium": 1472.64,
+  "factorsApplied": 4,
+  "evaluatedAt": "2026-08-24T09:30:00Z"
+}</pre>
+        </div>
+      </div>
+      <div style="margin-top:var(--space-4);font-size:12px;color:var(--color-muted)">
+        For full interactive monitoring and logs, see <a href="integration-monitor.html" style="color:var(--color-brand);font-weight:500">Integration Monitor →</a>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="window.location.href='integration-monitor.html'">Open Integration Monitor</button>
+      <button class="btn btn-primary" onclick="PS.closeModal()">Done</button>
+    </div>
+  `, 'modal-lg');
+}
+
+/* ──────────────────────────────────────────────────────────
+   VERSION SWITCHING
+────────────────────────────────────────────────────────── */
+function switchVersion(label) {
+  activeVersion = label;
+  history.replaceState(null,'',`?id=${currentProduct.id}&version=${label}#${activeTab}`);
+  renderPage();
+  setTimeout(()=>switchTab(activeTab), 0);
+}
+
+/* ──────────────────────────────────────────────────────────
+   DROPDOWN HELPER
+────────────────────────────────────────────────────────── */
+function toggleDD(id) {
+  const menu = document.getElementById(id);
+  if (!menu) return;
+  const isH = menu.classList.contains('hidden');
+  document.querySelectorAll('.dropdown-menu').forEach(m=>m.classList.add('hidden'));
+  if (isH) menu.classList.remove('hidden');
+}
+function setupDropdownClose() {
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.dropdown') && !e.target.closest('[onclick*="toggleDD"]')) {
+      document.querySelectorAll('.dropdown-menu').forEach(m=>m.classList.add('hidden'));
+    }
+  }, {once:false});
+}
+
+/* Spin keyframe for simulation button */
+const styleEl = document.createElement('style');
+styleEl.textContent = '@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
+document.head.appendChild(styleEl);
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

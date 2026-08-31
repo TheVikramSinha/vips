@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Log — Product Studio | VeriDex</title>
+  <meta name="description" content="Complete, immutable record of all Studio events.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Layout ────────────────────────────────── */
+    .audit-layout { display: flex; gap: var(--space-5); align-items: flex-start; }
+    .audit-main { flex: 1; min-width: 0; }
+    .filter-panel { width: 280px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); display: none; }
+    .filter-panel.open { display: block; }
+    
+    /* ── Banner ────────────────────────────────── */
+    .immutable-banner { background: #F1F5F9; border: 1px solid var(--color-border); border-left: 3px solid var(--color-muted); padding: 8px 16px; font-size: 13px; color: var(--color-muted); margin-bottom: var(--space-4); border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+    
+    /* ── Inline Filters ────────────────────────── */
+    .inline-filters { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+    .filter-chips { display: flex; align-items: center; gap: 8px; margin-bottom: var(--space-4); font-size: 12px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #fff; border: 1px solid var(--color-border); border-radius: 100px; color: var(--color-ink); }
+    .chip-close { cursor: pointer; color: var(--color-muted); transition: color .2s; }
+    .chip-close:hover { color: var(--color-danger); }
+    
+    /* ── Data Table ────────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .data-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    /* ── Badges ────────────────────────────────── */
+    .act-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .badge-success { background: #DCFCE7; color: var(--color-success); }
+    .badge-brand { background: var(--color-brand-light); color: var(--color-brand); }
+    .badge-danger { background: #FEE2E2; color: var(--color-danger); }
+    .badge-warning { background: #FEF9C3; color: var(--color-warning); }
+    .badge-muted { background: var(--color-surface); color: var(--color-muted); border: 1px solid var(--color-border); }
+    .badge-info { background: #E0F2FE; color: #0284C7; }
+
+    /* ── Drawer ────────────────────────────────── */
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.4); backdrop-filter: blur(2px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .3s; }
+    .drawer { position: fixed; top: 0; right: -640px; width: 640px; height: 100vh; background: #fff; z-index: 1001; box-shadow: -4px 0 24px rgba(0,0,0,0.1); display: flex; flex-direction: column; transition: right .3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .drawer.open { right: 0; }
+    .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+    
+    .drawer-header { padding: var(--space-5); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .drawer-body { flex: 1; overflow-y: auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-6); }
+    .drawer-footer { padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border); background: #fff; display: flex; justify-content: flex-end; align-items: center; }
+    
+    .diff-box { font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.5; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); white-space: pre; overflow-x: auto; color: var(--color-ink); }
+    
+    .pagination { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) 0; font-size: 13px; color: var(--color-muted); }
+  </style>
+</head>
+<body>
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    
+    <div class="page-header" style="padding-left:var(--space-5);padding-right:var(--space-5)">
+      <div class="page-header-left">
+        <h1 class="page-title">Audit Log</h1>
+        <p class="page-subtitle">Complete, immutable record of all Studio events. Entries cannot be modified or deleted.</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-ghost" onclick="PS.actionResult('info','Export','Exporting audit log as CSV...')">
+          <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M208 40H48a16 16 0 00-16 16v144a16 16 0 0016 16h160a16 16 0 0016-16V56a16 16 0 00-16-16zM128 168a8 8 0 01-5.66-2.34l-32-32a8 8 0 0111.32-11.32L120 140.69V88a8 8 0 0116 0v52.69l18.34-18.35a8 8 0 0111.32 11.32l-32 32A8 8 0 01128 168z" fill="currentColor"/></svg>
+          Export ▼
+        </button>
+        <button class="btn btn-secondary" onclick="toggleFilterPanel()">
+          <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M216 48H40a16 16 0 00-16 16v16a16 16 0 004.69 11.31L104 168v48a16 16 0 0023.75 13.92l32-16A16 16 0 00168 200v-32l75.31-76.69A16 16 0 00248 80V64a16 16 0 00-16-16z" fill="currentColor"/></svg>
+          Filter Panel
+        </button>
+      </div>
+    </div>
+
+    <div style="padding: 0 var(--space-5)">
+      <div class="immutable-banner">
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm-8-80V80a8 8 0 0116 0v56a8 8 0 01-16 0zm24 36a16 16 0 11-16-16 16 16 0 0116 16z" fill="currentColor"/></svg>
+        This is a read-only record. Audit entries cannot be modified.
+      </div>
+      
+      <div class="audit-layout">
+        <!-- Advanced Filter Panel (Collapsible) -->
+        <div class="filter-panel" id="advanced-filters">
+          <div style="font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+            Advanced Filters
+            <button class="btn btn-icon" onclick="toggleFilterPanel()" style="width:24px;height:24px"><svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+          </div>
+          <div class="form-group"><label class="form-label">Event ID Reference</label><input type="text" class="form-control" placeholder="EVT-2026..."></div>
+          <div class="form-group"><label class="form-label">IP Address Subnet</label><input type="text" class="form-control" placeholder="192.168.x.x"></div>
+          <div class="form-group"><label class="form-label">Session ID</label><input type="text" class="form-control" placeholder="SES-..."></div>
+          <div class="form-group"><label class="form-label">Product Lifecycle State</label><select class="form-control"><option>All States</option><option>Draft</option><option>In Review</option><option>Approved</option><option>Published</option></select></div>
+          <div class="form-group"><label class="form-label">Approval Gate</label><select class="form-control"><option>Any Gate</option><option>Actuarial</option><option>Underwriting</option></select></div>
+          <button class="btn btn-secondary" style="width:100%">Apply Advanced</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="audit-main">
+          
+          <div class="inline-filters">
+            <select class="form-control"><option>Date: Last 30 Days</option><option>Last 7 Days</option><option>Today</option></select>
+            <select class="form-control"><option>Product: All</option><option>PRD-001</option><option>PRD-002</option></select>
+            <select class="form-control"><option>User: All</option><option>Anika Sharma</option><option>Rajan Mehta</option></select>
+            <select class="form-control"><option>Action: All</option><option>MODIFIED</option><option>APPROVED</option></select>
+            <select class="form-control"><option>Studio: All</option><option>Rating</option><option>Governance</option></select>
+          </div>
+          
+          <div class="filter-chips">
+            <span style="font-weight:600;color:var(--color-muted);margin-right:8px">Active Filters:</span>
+            <div class="chip">Date: Last 30 Days <span class="chip-close">×</span></div>
+            <a href="#" style="color:var(--color-brand);text-decoration:none">Clear All</a>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:14%">Timestamp (UTC+5:30)</th>
+                <th style="width:14%">User</th>
+                <th style="width:10%">Action</th>
+                <th style="width:12%">Studio</th>
+                <th style="width:15%">Product</th>
+                <th style="width:25%">Description</th>
+                <th style="width:10%;text-align:right">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">21-Aug-2026 14:37:22</td>
+                <td><strong>Rajan Mehta</strong><br><span style="font-size:11px;color:var(--color-muted)">Pricing Actuary</span></td>
+                <td><span class="act-badge badge-info">SIMULATED</span></td>
+                <td>Simulation</td>
+                <td><a href="#" style="text-decoration:none">PRD-001</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.04</span></td>
+                <td>Ran full simulation suite — 12/12 tests passed</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('sim')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">21-Aug-2026 14:22:05</td>
+                <td><strong>Anika Sharma</strong><br><span style="font-size:11px;color:var(--color-muted)">Product Mgr</span></td>
+                <td><span class="act-badge badge-brand">MODIFIED</span></td>
+                <td>Coverage</td>
+                <td><a href="#" style="text-decoration:none">PRD-002</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.07</span></td>
+                <td>Updated Theft cover deductible from $600 to $500</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('mod')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">21-Aug-2026 10:05:33</td>
+                <td><strong>Anika Sharma</strong><br><span style="font-size:11px;color:var(--color-muted)">Product Mgr</span></td>
+                <td><span class="act-badge badge-success">CREATED</span></td>
+                <td>Product</td>
+                <td><a href="#" style="text-decoration:none">PRD-002</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.07-DRAFT</span></td>
+                <td>Created new version cloned from v2026.04</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('cre')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">20-Aug-2026 16:55:01</td>
+                <td><strong>Sunita Pillai</strong><br><span style="font-size:11px;color:var(--color-muted)">UW Mgr</span></td>
+                <td><span class="act-badge badge-success">APPROVED</span></td>
+                <td>Governance</td>
+                <td><a href="#" style="text-decoration:none">PRD-004</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.05</span></td>
+                <td>Approved Underwriting gate — "Rules aligned with 2026 appetite"</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('gov')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">20-Aug-2026 15:14:44</td>
+                <td><strong>Rajan Mehta</strong><br><span style="font-size:11px;color:var(--color-muted)">Pricing Actuary</span></td>
+                <td><span class="act-badge badge-success">APPROVED</span></td>
+                <td>Governance</td>
+                <td><a href="#" style="text-decoration:none">PRD-004</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.05</span></td>
+                <td>Approved Actuarial/Pricing gate</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('gov')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">19-Aug-2026 17:01:55</td>
+                <td><strong>Anika Sharma</strong><br><span style="font-size:11px;color:var(--color-muted)">Product Mgr</span></td>
+                <td><span class="act-badge badge-warning">SUBMITTED</span></td>
+                <td>Governance</td>
+                <td><a href="#" style="text-decoration:none">PRD-003</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.06-RC1</span></td>
+                <td>Submitted v2026.06-RC1 for governance review</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('gov')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">19-Aug-2026 16:40:22</td>
+                <td><strong>Sunita Pillai</strong><br><span style="font-size:11px;color:var(--color-muted)">UW Mgr</span></td>
+                <td><span class="act-badge badge-success">CREATED</span></td>
+                <td>Underwriting</td>
+                <td><a href="#" style="text-decoration:none">PRD-003</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.06-RC1</span></td>
+                <td>Created rule UW-DCL-009 — Flood Zone 4 Exclusion</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('mod')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">19-Aug-2026 14:08:11</td>
+                <td><strong>Rajan Mehta</strong><br><span style="font-size:11px;color:var(--color-muted)">Pricing Actuary</span></td>
+                <td><span class="act-badge badge-brand">MODIFIED</span></td>
+                <td>Rating</td>
+                <td><a href="#" style="text-decoration:none">PRD-003</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.06-RC1</span></td>
+                <td>Updated Base Rate from $420 to $445 (+6.0%)</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('mod2')">View</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace">06-Apr-2026 08:00:00</td>
+                <td><strong>Priya Varghese</strong><br><span style="font-size:11px;color:var(--color-muted)">Publisher</span></td>
+                <td><span class="act-badge badge-success">PUBLISHED</span></td>
+                <td>Governance</td>
+                <td><a href="#" style="text-decoration:none">PRD-001</a> <span style="font-family:'IBM Plex Mono',monospace;color:var(--color-muted)">v2026.04</span></td>
+                <td>Published version. Effective 01-Apr-2026.</td>
+                <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="openDrawer('pub')">View</button></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="pagination">
+            <div>Showing 1 - 9 of 14,302 events</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" disabled>Previous</button>
+              <button class="btn btn-secondary btn-sm">Next</button>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    
+  </main>
+</div>
+
+<!-- AUDIT DRAWER -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="audit-drawer">
+  <div class="drawer-header">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <span class="act-badge badge-brand">MODIFIED</span>
+      <span style="font-size:14px;color:var(--color-muted);font-weight:600">Rating Studio</span>
+    </div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--color-ink)">21-Aug-2026 14:22:05 UTC+5:30</div>
+    <div style="font-size:13px;color:var(--color-muted);margin-top:4px">Rajan Mehta — Pricing Actuary</div>
+  </div>
+  
+  <div class="drawer-body">
+    <div style="display:flex;flex-direction:column;gap:var(--space-5)">
+      
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:8px">Event Reference</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--color-ink)">EVT-2026-08-21-00042</div>
+      </div>
+      
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:8px">Product Context</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr><td style="padding:4px 0;width:120px;color:var(--color-muted)">Product</td><td>SME Property All Risks</td></tr>
+          <tr><td style="padding:4px 0;color:var(--color-muted)">Version</td><td style="font-family:'IBM Plex Mono',monospace">v2026.06-RC1</td></tr>
+          <tr><td style="padding:4px 0;color:var(--color-muted)">Component</td><td>Base Rate (<span style="font-family:'IBM Plex Mono',monospace">RAT-BR-001</span>)</td></tr>
+        </table>
+      </div>
+      
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:8px">Change Detail</div>
+        <div class="diff-box">Field Modified: Base Rate Value
+
+Old Value:   $420.00
+New Value:   $445.00
+
+Change: <span style="color:var(--color-danger)">+$25.00 (+6.0%)</span></div>
+      </div>
+      
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:8px">Security Context</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr><td style="padding:4px 0;width:120px;color:var(--color-muted)">User IP</td><td style="font-family:'IBM Plex Mono',monospace">192.168.14.x</td></tr>
+          <tr><td style="padding:4px 0;color:var(--color-muted)">Session ID</td><td style="font-family:'IBM Plex Mono',monospace">SES-2026-082110429</td></tr>
+        </table>
+      </div>
+      
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-muted);text-transform:uppercase;margin-bottom:8px">Related Events</div>
+        <a href="#" style="font-size:13px;color:var(--color-brand);text-decoration:none">← View previous modification to this component</a>
+      </div>
+
+    </div>
+  </div>
+  
+  <div class="drawer-footer">
+    <div style="font-size:11px;color:var(--color-muted);flex:1">This audit record is immutable. Retained for 7 years.</div>
+    <button class="btn btn-secondary" onclick="closeDrawer()">Close</button>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('audit', [
+    { label:'Audit Log', href:'#' }
+  ]);
+});
+
+function toggleFilterPanel() {
+  const p = document.getElementById('advanced-filters');
+  p.classList.toggle('open');
+}
+
+function openDrawer(type) {
+  document.getElementById('audit-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('audit-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

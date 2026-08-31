@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distribution Studio — Product Studio | VeriDex</title>
+  <meta name="description" content="Control which distribution channels may offer this product, define channel-specific rules, and manage intermediary access.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Two-panel layout ──────────────────────── */
+    .studio-layout { display: grid; grid-template-columns: 320px 1fr; gap: var(--space-5); align-items: start; }
+
+    /* ── Channel list sidebar ──────────────────── */
+    .channel-sidebar { position: sticky; top: calc(56px + var(--space-6)); }
+    .channel-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); }
+    .channel-item {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: 10px var(--space-4);
+      border-radius: var(--radius-md); cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .1s, border-color .1s;
+    }
+    .channel-item:hover { background: var(--color-surface); }
+    .channel-item.active { background: var(--color-brand-light); border-left-color: var(--color-brand); }
+    .channel-icon { font-size: 16px; flex-shrink: 0; }
+    
+    .channel-item-body { flex: 1; min-width: 0; }
+    .channel-item-name { font-size: 13px; font-weight: 500; color: var(--color-ink); }
+    .channel-item.active .channel-item-name { color: var(--color-brand); }
+    .channel-item-meta { font-size: 11px; color: var(--color-muted); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+    
+    .channel-comm-badge {
+      display: inline-flex; height: 18px; padding: 0 6px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; align-items: center;
+      background: #EBF1FA; color: var(--color-brand); flex-shrink: 0;
+    }
+    .channel-status-icon { flex-shrink: 0; font-size: 12px; }
+    .channel-status-active { color: var(--color-success); }
+    .channel-status-inactive { color: var(--color-muted); }
+
+    /* ── Section card ──────────────────────────── */
+    .section-card { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); cursor: pointer; user-select: none; transition: background .1s; }
+    .section-header:hover { background: var(--color-surface); }
+    .section-header-left { display: flex; align-items: center; gap: var(--space-3); }
+    .section-number { width: 24px; height: 24px; border-radius: 50%; background: var(--color-brand-light); color: var(--color-brand); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .section-title { font-size: 14px; font-weight: 600; }
+    .section-subtitle { font-size: 12px; color: var(--color-muted); margin-top: 1px; }
+    .section-chevron { color: var(--color-muted); transition: transform .2s; }
+    .section-chevron.open { transform: rotate(90deg); }
+    .section-body { border-top: 1px solid var(--color-border); max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .section-body.open { max-height: 2000px; overflow: visible; }
+    .section-inner { padding: var(--space-5) var(--space-6); }
+
+    /* ── Form grids ────────────────────────────── */
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-6); }
+    .span-2 { grid-column: 1 / -1; }
+
+    /* ── Toggle ────────────────────────────────── */
+    .toggle-wrap { display: flex; align-items: center; gap: var(--space-3); font-size: 13px; }
+    .toggle-switch { position: relative; width: 40px; height: 22px; display: inline-block; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; border-radius: 11px; cursor: pointer; transition: .2s; }
+    .toggle-on  .toggle-slider { background: var(--color-brand); }
+    .toggle-off .toggle-slider { background: var(--color-disabled); }
+    .toggle-dot { position: absolute; top: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: .2s; }
+    .toggle-on  .toggle-dot { left: calc(100% - 20px); }
+    .toggle-off .toggle-dot { left: 2px; }
+
+    /* ── Data Tables ───────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+    .data-table tr:last-child td { border-bottom: none; }
+    
+    .table-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
+
+    /* ── Context bar ───────────────────────────── */
+    .studio-context-bar {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); margin-bottom: var(--space-5); font-size: 13px;
+    }
+    .studio-context-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; background: var(--color-panel);
+      border: 1px solid var(--color-border); border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+    }
+  </style>
+</head>
+<body class="studio-page">
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Distribution Studio</h1>
+          <p class="page-subtitle">Private Car Comprehensive · v2026.04 — 4 active channels</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="openCommissionSummaryModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm-8-48v-24h-16a8 8 0 010-16h16V96a8 8 0 0116 0v32h16a8 8 0 010 16h-16v24a8 8 0 01-16 0z" fill="currentColor"/></svg>
+            Commission Summary
+          </button>
+          <button class="btn btn-primary" onclick="openAddChannelModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+            Add Channel
+          </button>
+        </div>
+      </div>
+
+      <div class="studio-context-bar">
+        <span class="studio-context-pill">
+          <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+          PRD-001 · v2026.04
+        </span>
+        <span style="color:var(--color-muted)">·</span>
+        <span>4 channels &nbsp;·&nbsp; 3 intermediary groups &nbsp;·&nbsp; 2 channel-specific rule overrides</span>
+        <div style="margin-left:auto"><a href="product-detail.html?id=PRD-001#studios" class="btn btn-ghost btn-sm">← Back to Product</a></div>
+      </div>
+
+      <div class="published-only-banner" style="background:var(--color-brand-light);border:1px solid rgba(26,79,138,.2);border-radius:var(--radius-md);padding:var(--space-3) var(--space-5);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--color-brand);margin-bottom:var(--space-5)">
+        <span>📌 This version is <strong>Published</strong> — distribution rules are read-only.</span>
+        <button class="btn btn-primary btn-sm" onclick="PS.actionResult('info','Clone','Clone this version from Product Detail.')">Clone Version to Edit</button>
+      </div>
+
+      <div class="studio-layout">
+        <!-- LEFT: Channel List -->
+        <div class="channel-sidebar">
+          <div class="card">
+            <div class="card-header" style="padding:var(--space-4) var(--space-5)">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted)">Distribution Channels</div>
+            </div>
+            <div class="channel-list" id="channel-list"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Detail Panel -->
+        <div id="detail-panel" style="display:flex;flex-direction:column;gap:var(--space-4)"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+const CHANNELS = [
+  { id:'CHAN-D01', name:'Direct (Web)', icon:'🌐', status:'active', comm:'0%', type:'Direct',
+    desc:'Direct-to-consumer sales via the primary public website.',
+    auth:'Consumers may quote and buy without referral if standard rules pass.',
+    territories:[{j:'India',p:'Yes',n:'All zones'},{j:'UAE',p:'Yes',n:'All zones'},{j:'UK',p:'No',n:'Not launched'}],
+    commConfig:{ type:'None', rate:'0%', basis:'0% / 0% / 0%', override:'No', max:'0%', clawback:'N/A', timing:'N/A', code:'COMM-DIR-00' },
+    rules:[], accessModel:'Public Access (No intermediaries)', intermediaries:[],
+    from:'01-Apr-2026', to:'30-Sep-2026'
+  },
+  { id:'CHAN-B01', name:'Broker Portal', icon:'🤝', status:'active', comm:'15%', type:'Intermediary — Broker',
+    desc:'Appointed brokers accessing the product via the broker web portal.',
+    auth:'Brokers may quote and bind up to $50,000 sum insured without referral.',
+    territories:[{j:'India',p:'Yes',n:'All zones'},{j:'UAE',p:'Yes',n:'Zones A, B only'},{j:'UK',p:'No',n:'Pending regulatory approval'}],
+    commConfig:{ type:'Percentage of Gross Premium (excluding taxes)', rate:'15%', basis:'New Business: 15% / Renewal: 12% / Reinstated: 10%', override:'Yes — with Underwriting Manager approval', max:'20%', clawback:'Yes — pro-rata on cancellation within 90 days', timing:'Monthly in arrears', code:'COMM-BROKER-STD' },
+    rules:[
+      { rule:'Max Insured Value (Broker)', type:'Override', val:'$150,000', note:'Brokers may quote higher SI than direct' },
+      { rule:'Minimum Premium (Broker)', type:'Override', val:'$180/year', note:'Slightly lower than direct channel' },
+      { rule:'Discount Cap (Broker)', type:'Addition', val:'Max discount: 50%', note:'Brokers may stack up to 50%' },
+      { rule:'Payment Methods', type:'Restriction', val:'Annual only', note:'Installments not available via broker portal' }
+    ],
+    accessModel:'Restricted Access',
+    intermediaries:[
+      { name:'Asha Brokers Ltd', code:'BRK-001', auth:'Yes', terr:'India', stat:'Active' },
+      { name:'Global Risk Partners', code:'BRK-002', auth:'No (quote only)', terr:'UAE', stat:'Active' },
+      { name:'Premier Insurance Brokers', code:'BRK-003', auth:'Yes', terr:'India, UAE', stat:'Active' }
+    ],
+    from:'01-Apr-2026', to:'30-Sep-2026'
+  },
+  { id:'CHAN-BA01', name:'Bancassurance', icon:'🏦', status:'active', comm:'12%', type:'Intermediary — Bank Partner',
+    desc:'Integrated sales through partner banking applications.',
+    auth:'Automatic binding based on bank customer pre-approval.',
+    territories:[{j:'India',p:'Yes',n:'Partner bank branch regions only'}],
+    commConfig:{ type:'Percentage of Gross Premium', rate:'12%', basis:'New Business: 12% / Renewal: 10%', override:'No', max:'15%', clawback:'Yes', timing:'Quarterly', code:'COMM-BANK-STD' },
+    rules:[], accessModel:'Bank Partners Only', intermediaries:[],
+    from:'01-Apr-2026', to:'30-Sep-2026'
+  },
+  { id:'CHAN-API01', name:'API Partner', icon:'{ }', status:'active', comm:'10%', type:'API Integration',
+    desc:'Headless distribution via third-party FinTech app.',
+    auth:'Quote only — bind via separate API endpoint with OTP verification.',
+    territories:[{j:'India',p:'Yes',n:'App user base'}],
+    commConfig:{ type:'Percentage of Net Premium', rate:'10%', basis:'Flat 10% on all transactions', override:'No', max:'10%', clawback:'Yes — full refund if cancelled within 14 days', timing:'Monthly', code:'COMM-API-FIN' },
+    apiConfig:{
+      consumer:'FinTech Partner — InsureNow App',
+      key:'sk-••••••••••••3f9a',
+      limit:'1000 quotes/hour',
+      whiteLabel:'Yes — custom product name: "InsureNow Car Plan"',
+      dta:'DTA-2026-INSRNOW-001'
+    },
+    rules:[
+      { rule:'Policy Documentation', type:'Restriction', val:'Digital only', note:'No paper documentation permitted via API' },
+      { rule:'Referrals', type:'Restriction', val:'Treated as Decline', note:'Automated accept/decline only. Referrals trigger webhook notification.' }
+    ],
+    accessModel:'API Key Restricted', intermediaries:[],
+    from:'01-Apr-2026', to:'30-Sep-2026'
+  }
+];
+
+let activeChannelId = 'CHAN-B01';
+let openSections = new Set(['identity','territory','commission','rules','access','effective','api']);
+
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label:'PRD-001', href:'product-detail.html?id=PRD-001' },
+    { label:'v2026.04', href:'product-detail.html?id=PRD-001&version=2026.04' },
+    { label:'Distribution Studio', href:'#' }
+  ]);
+  renderSidebar();
+  loadChannel(activeChannelId);
+});
+
+function renderSidebar() {
+  document.getElementById('channel-list').innerHTML = CHANNELS.map(c => `
+    <div class="channel-item ${c.id===activeChannelId?'active':''}" onclick="loadChannel('${c.id}')" id="ch-${c.id}">
+      <span class="channel-icon">${c.icon}</span>
+      <div class="channel-item-body">
+        <div class="channel-item-name">${c.name}</div>
+        <div class="channel-item-meta">${c.id}</div>
+      </div>
+      <span class="channel-comm-badge">${c.comm}</span>
+      <span class="channel-status-icon ${c.status==='active'?'channel-status-active':'channel-status-inactive'}" style="margin-left:4px">${c.status==='active'?'✓':'✗'}</span>
+    </div>
+  `).join('');
+}
+
+function loadChannel(id) {
+  activeChannelId = id;
+  document.querySelectorAll('.channel-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`ch-${id}`)?.classList.add('active');
+  const ch = CHANNELS.find(c=>c.id===id);
+  if (!ch) return;
+  renderDetail(ch);
+}
+
+function renderDetail(c) {
+  const p = document.getElementById('detail-panel');
+  
+  p.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-2)">
+      <h2 style="font-size:18px;font-weight:700"><span style="margin-right:8px">${c.icon}</span>${c.name}</h2>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-muted);background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:2px 7px">${c.id}</span>
+      <span class="badge badge-published" style="font-size:10px">ACTIVE</span>
+    </div>
+
+    ${buildSection('identity','1','Channel Identity', c.type, `
+      <div class="form-grid-2">
+        ${rof('Channel Name', c.name)}
+        ${rof('Channel ID', c.id, true)}
+        ${rof('Channel Type', c.type)}
+        ${rof('Status', c.status==='active'?'Active':'Inactive')}
+        <div class="form-group span-2"><label class="form-label">Description</label>
+          <div style="font-size:13px;color:var(--color-muted)">${c.desc}</div>
+        </div>
+        <div class="form-group span-2"><label class="form-label">Quoting Authority</label>
+          <div style="font-size:13px;color:var(--color-ink);background:var(--color-surface);padding:8px 12px;border-radius:var(--radius-md);border:1px solid var(--color-border)">${c.auth}</div>
+        </div>
+      </div>
+    `)}
+
+    ${c.apiConfig ? buildSection('api','*','API Integration Settings', 'Authentication and limits', `
+      <div class="form-grid-2">
+        ${rof('API Consumer', c.apiConfig.consumer)}
+        ${rof('API Key', c.apiConfig.key, true)}
+        ${rof('Rate Limit', c.apiConfig.limit)}
+        ${rof('White-label Settings', c.apiConfig.whiteLabel)}
+        ${rof('Data Transfer Agreement', c.apiConfig.dta, true)}
+      </div>
+    `) : ''}
+
+    ${buildSection('territory','2','Territorial Limits', 'Jurisdictions where channel may operate', `
+      <table class="data-table">
+        <thead><tr><th>Jurisdiction</th><th>Permitted</th><th>Notes</th></tr></thead>
+        <tbody>
+          ${c.territories.map(t=>`<tr>
+            <td><strong>${t.j}</strong></td>
+            <td style="color:${t.p==='Yes'?'var(--color-success)':'var(--color-danger)'}">${t.p==='Yes'?'✓ Yes':'✗ No'}</td>
+            <td style="color:var(--color-muted)">${t.n}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="table-actions"><button class="btn btn-ghost btn-sm" disabled>+ Add Jurisdiction</button></div>
+    `)}
+
+    ${buildSection('commission','3','Commission Configuration', `${c.commConfig.rate} standard rate`, `
+      <div class="form-grid-2">
+        ${rof('Commission Type', c.commConfig.type)}
+        <div class="form-group"><label class="form-label">Standard Rate</label>
+          <div style="font-size:18px;font-weight:700;color:var(--color-brand);padding:4px 0">${c.commConfig.rate}</div>
+        </div>
+        <div class="form-group span-2">${rof('Commission Basis', c.commConfig.basis)}</div>
+        ${rof('Override Allowed', c.commConfig.override)}
+        ${rof('Maximum Commission', c.commConfig.max)}
+        ${rof('Commission Claw-back', c.commConfig.clawback)}
+        ${rof('Payment Timing', c.commConfig.timing)}
+        ${rof('Commission Code', c.commConfig.code, true)}
+      </div>
+    `)}
+
+    ${buildSection('rules','4','Channel-Specific Rules', `${c.rules.length} overrides/additions`, `
+      ${c.rules.length===0 ? `<div style="font-size:13px;color:var(--color-muted);padding:var(--space-3) 0">No channel-specific rules configured. Channel uses standard product rules.</div>` : 
+      `<table class="data-table">
+        <thead><tr><th>Rule</th><th>Type</th><th>Value</th><th>Note</th></tr></thead>
+        <tbody>
+          ${c.rules.map(r=>`<tr>
+            <td><strong>${r.rule}</strong></td>
+            <td><span style="font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--color-surface);border:1px solid var(--color-border)">${r.type}</span></td>
+            <td>${r.val}</td>
+            <td style="color:var(--color-muted);font-size:12px">${r.note}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`}
+      <div class="table-actions"><button class="btn btn-ghost btn-sm" disabled>+ Add Rule Override</button></div>
+    `)}
+
+    ${buildSection('access','5','Intermediary Access', c.accessModel, `
+      <div style="margin-bottom:var(--space-4);display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:600">Access Model: ${c.accessModel}</div>
+          <div style="font-size:12px;color:var(--color-muted);margin-top:2px">${c.accessModel==='Restricted Access'?'Only the intermediaries listed below may access this channel.':'All appointed intermediaries have access (no individual configuration needed).'}</div>
+        </div>
+        ${c.accessModel==='Restricted Access' ? `<button class="btn btn-ghost btn-sm">Switch to Open Access</button>` : ''}
+      </div>
+      
+      ${c.intermediaries.length > 0 ? `
+        <table class="data-table">
+          <thead><tr><th>Intermediary</th><th>Code</th><th>Binding Auth</th><th>Territory</th><th>Status</th></tr></thead>
+          <tbody>
+            ${c.intermediaries.map(i=>`<tr>
+              <td><strong>${i.name}</strong></td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${i.code}</td>
+              <td>${i.auth}</td>
+              <td>${i.terr}</td>
+              <td style="color:${i.stat==='Active'?'var(--color-success)':'var(--color-muted)'}">${i.stat}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div class="table-actions"><button class="btn btn-ghost btn-sm" disabled>+ Add Intermediary</button></div>
+      ` : ''}
+    `)}
+
+    ${buildSection('effective','6','Effective Dates', `${c.from} — ${c.to}`, `
+      <div class="form-grid-2">
+        ${rof('Channel Active From', c.from)}
+        ${rof('Channel Active To', c.to)}
+      </div>
+      <div style="margin-top:var(--space-3)">
+        <div class="toggle-wrap">
+          <div class="toggle-switch toggle-off"><div class="toggle-slider"></div><div class="toggle-dot"></div></div>
+          <span style="font-size:13px;color:var(--color-muted)">Override effective period (use dates different from the product version)</span>
+        </div>
+      </div>
+    `)}
+  `;
+
+  openSections.forEach(sid => {
+    document.getElementById(`sec-body-${sid}`)?.classList.add('open');
+    document.getElementById(`sec-chev-${sid}`)?.classList.add('open');
+  });
+}
+
+function buildSection(id, num, title, subtitle, content) {
+  const isOpen = openSections.has(id);
+  return `<div class="section-card">
+    <div class="section-header" onclick="toggleSection('${id}')">
+      <div class="section-header-left"><div class="section-number">${num}</div><div><div class="section-title">${title}</div><div class="section-subtitle">${subtitle}</div></div></div>
+      <svg class="section-chevron ${isOpen?'open':''}" id="sec-chev-${id}" width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M181.66 133.66l-80 80a8 8 0 01-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0111.32-11.32l80 80a8 8 0 010 11.32z" fill="currentColor"/></svg>
+    </div>
+    <div class="section-body ${isOpen?'open':''}" id="sec-body-${id}"><div class="section-inner">${content}</div></div>
+  </div>`;
+}
+function toggleSection(id) {
+  const b=document.getElementById(`sec-body-${id}`), c=document.getElementById(`sec-chev-${id}`);
+  const o=b?.classList.contains('open');
+  if(o){b?.classList.remove('open');c?.classList.remove('open');openSections.delete(id);}
+  else{b?.classList.add('open');c?.classList.add('open');openSections.add(id);}
+}
+function rof(label, value, mono=false) {
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <div style="font-size:${mono?'12px':'14px'};font-family:${mono?"'IBM Plex Mono',monospace":'inherit'};color:var(--color-ink);padding:4px 0">${value||'—'}</div>
+  </div>`;
+}
+
+function openCommissionSummaryModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Commission Summary</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--color-muted);margin-bottom:var(--space-4)">Overview of commission structures across all active channels for this product version.</p>
+      <table class="data-table">
+        <thead><tr><th>Channel</th><th>Type</th><th>Standard Rate</th><th>New Business</th><th>Renewal</th><th>Max Override</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Direct (Web)</strong></td>
+            <td>Direct</td>
+            <td style="font-weight:700">0%</td><td>0%</td><td>0%</td><td>0%</td>
+          </tr>
+          <tr>
+            <td><strong>Broker Portal</strong></td>
+            <td>Broker</td>
+            <td style="font-weight:700;color:var(--color-brand)">15%</td><td>15%</td><td>12%</td><td>20%</td>
+          </tr>
+          <tr>
+            <td><strong>Bancassurance</strong></td>
+            <td>Bancassurance</td>
+            <td style="font-weight:700;color:var(--color-brand)">12%</td><td>12%</td><td>10%</td><td>15%</td>
+          </tr>
+          <tr>
+            <td><strong>API Partner</strong></td>
+            <td>API</td>
+            <td style="font-weight:700;color:var(--color-brand)">10%</td><td>10%</td><td>10%</td><td>10%</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--color-muted);margin-bottom:4px">Estimated Commission Payable</div>
+          <div style="font-size:12px;color:var(--color-muted)">Based on test risk premium ($394.04) via Broker Portal (15%)</div>
+        </div>
+        <div style="font-size:20px;font-weight:700;color:var(--color-brand);font-family:'IBM Plex Mono',monospace">$59.11</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `);
+}
+
+function openAddChannelModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Add Distribution Channel</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group span-2">
+          <label class="form-label">Channel Name</label>
+          <input type="text" class="form-control" placeholder="e.g. MGA Partner Portal">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Channel Type</label>
+          <select class="form-control">
+            <option>Direct</option><option>Broker</option><option>Bancassurance</option><option>Agent</option><option>API</option><option>Affinity</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Standard Commission (%)</label>
+          <input type="number" class="form-control" placeholder="e.g. 15">
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Territories</label>
+          <div style="display:flex;gap:var(--space-3);flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" checked> India</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> UAE</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox"> UK</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Binding Authority</label>
+          <div class="toggle-wrap" style="margin-bottom:8px">
+            <div class="toggle-switch toggle-on"><div class="toggle-slider"></div><div class="toggle-dot"></div></div>
+            <span>Yes</span>
+          </div>
+          <input type="number" class="form-control" placeholder="Limit amount (e.g. 50000)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Active From</label>
+          <input type="date" class="form-control" value="2026-04-01">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createDistributionChannel()">Add Channel</button>
+    </div>
+  `);
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

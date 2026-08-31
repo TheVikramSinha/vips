@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eligibility Studio — Product Studio | VeriDex</title>
+  <meta name="description" content="Define eligibility conditions for insurance products — determine when a product or cover can be offered to a risk.">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* ── Two-panel layout ──────────────────────── */
+    .studio-layout { display: grid; grid-template-columns: 300px 1fr; gap: var(--space-5); align-items: start; }
+
+    /* ── Rule list sidebar ─────────────────────── */
+    .rule-sidebar { position: sticky; top: calc(56px + var(--space-6)); }
+    .rule-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); }
+    .rule-section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--color-muted);
+      padding: var(--space-2) var(--space-3) var(--space-1);
+    }
+    .rule-item {
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: 10px var(--space-4);
+      border-radius: var(--radius-md); cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .1s, border-color .1s;
+    }
+    .rule-item:hover { background: var(--color-surface); }
+    .rule-item.active { background: var(--color-brand-light); border-left-color: var(--color-brand); }
+    .rule-status-icon { flex-shrink: 0; margin-top: 2px; }
+    .rule-status-active  { color: var(--color-success); }
+    .rule-status-warning { color: var(--color-warning); }
+    .rule-status-off     { color: var(--color-disabled); }
+    .rule-item-body { flex: 1; min-width: 0; }
+    .rule-item-name { font-size: 13px; font-weight: 500; color: var(--color-ink); }
+    .rule-item.active .rule-item-name { color: var(--color-brand); }
+    .rule-item-meta { font-size: 11px; color: var(--color-muted); margin-top: 2px; display: flex; align-items: center; gap: var(--space-2); }
+    .rule-cover-badge {
+      display: inline-flex; height: 16px; padding: 0 5px;
+      border-radius: 3px; font-size: 9px; font-weight: 700;
+      align-items: center;
+      background: #F3E8FF; color: #7C3AED;
+    }
+    .rule-add-btn {
+      width: 100%; display: flex; align-items: center; gap: var(--space-2);
+      padding: 7px var(--space-3); font-size: 12px; color: var(--color-muted);
+      border: 1px dashed var(--color-border); border-radius: var(--radius-md);
+      background: none; cursor: pointer; margin: var(--space-2); transition: all .1s;
+    }
+    .rule-add-btn:hover { border-color: var(--color-brand); color: var(--color-brand); background: var(--color-brand-light); }
+
+    /* ── Section card ──────────────────────────── */
+    .section-card { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); cursor: pointer; user-select: none; transition: background .1s; }
+    .section-header:hover { background: var(--color-surface); }
+    .section-header-left { display: flex; align-items: center; gap: var(--space-3); }
+    .section-number { width: 24px; height: 24px; border-radius: 50%; background: var(--color-brand-light); color: var(--color-brand); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .section-title { font-size: 14px; font-weight: 600; }
+    .section-subtitle { font-size: 12px; color: var(--color-muted); margin-top: 1px; }
+    .section-chevron { color: var(--color-muted); transition: transform .2s; }
+    .section-chevron.open { transform: rotate(90deg); }
+    .section-body { border-top: 1px solid var(--color-border); max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+    .section-body.open { max-height: 2400px; }
+    .section-inner { padding: var(--space-5) var(--space-6); }
+
+    /* ── Form helpers ──────────────────────────── */
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-6); }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4); }
+    .span-2 { grid-column: 1 / -1; }
+
+    /* ── Toggle ────────────────────────────────── */
+    .toggle-wrap { display: flex; align-items: center; gap: var(--space-3); font-size: 13px; }
+    .toggle-switch { position: relative; width: 40px; height: 22px; display: inline-block; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; border-radius: 11px; cursor: pointer; transition: .2s; }
+    .toggle-on  .toggle-slider { background: var(--color-brand); }
+    .toggle-off .toggle-slider { background: var(--color-disabled); }
+    .toggle-dot { position: absolute; top: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: .2s; }
+    .toggle-on  .toggle-dot { left: calc(100% - 20px); }
+    .toggle-off .toggle-dot { left: 2px; }
+
+    /* ── Condition builder ─────────────────────── */
+    .condition-builder { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .cb-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    }
+    .cb-direction {
+      display: inline-flex; border-radius: var(--radius-md); overflow: hidden;
+      border: 1px solid var(--color-border);
+    }
+    .cb-dir-btn {
+      padding: 4px 12px; border: none; font-size: 11px; font-weight: 600;
+      cursor: pointer; text-transform: uppercase; letter-spacing: .3px;
+      background: var(--color-panel); color: var(--color-muted); transition: all .15s;
+    }
+    .cb-dir-btn.active { background: var(--color-brand); color: #fff; }
+    .cb-logic {
+      display: inline-flex; border-radius: var(--radius-sm); overflow: hidden;
+      border: 1px solid var(--color-border);
+    }
+    .cb-logic-btn {
+      padding: 3px 10px; border: none; font-size: 10px; font-weight: 700;
+      cursor: pointer; text-transform: uppercase; letter-spacing: .5px;
+      background: var(--color-panel); color: var(--color-muted); transition: all .15s;
+    }
+    .cb-logic-btn.active { background: var(--color-brand-light); color: var(--color-brand); }
+    .cb-row {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .cb-row:last-of-type { border-bottom: none; }
+    .cb-row select, .cb-row input { height: 32px; font-size: 13px; }
+    .cb-connector {
+      padding: 3px var(--space-4); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px; color: var(--color-brand);
+      background: #F8FAFF; border-bottom: 1px solid var(--color-border);
+    }
+    .cb-actions { padding: var(--space-3) var(--space-4); background: var(--color-surface); border-top: 1px solid var(--color-border); display: flex; gap: var(--space-3); }
+
+    /* ── Outcome cards ─────────────────────────── */
+    .outcome-type-selector { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); }
+    .outcome-card {
+      flex: 1; padding: var(--space-4);
+      border: 2px solid var(--color-border); border-radius: var(--radius-lg);
+      cursor: pointer; text-align: center; transition: all .15s;
+    }
+    .outcome-card:hover { border-color: var(--color-brand); }
+    .outcome-card.selected { border-color: var(--color-brand); background: var(--color-brand-light); }
+    .outcome-card-icon { font-size: 22px; margin-bottom: 4px; }
+    .outcome-card-label { font-size: 12px; font-weight: 600; }
+    .outcome-card-desc { font-size: 11px; color: var(--color-muted); margin-top: 2px; }
+
+    /* ── Rule preview box ──────────────────────── */
+    .rule-preview-box {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-5);
+      border-left: 4px solid var(--color-brand);
+    }
+    .rp-title { font-size: 14px; font-weight: 700; margin-bottom: var(--space-2); }
+    .rp-meta { font-size: 12px; color: var(--color-muted); margin-bottom: var(--space-3); }
+    .rp-line { font-size: 13px; margin-bottom: var(--space-2); }
+    .rp-label { font-weight: 600; color: var(--color-muted); margin-right: 4px; }
+    .rp-value { color: var(--color-ink); }
+    .rp-message { font-style: italic; color: var(--color-muted); }
+
+    /* ── Test modal ────────────────────────────── */
+    .test-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 420px; }
+    .test-input-panel { padding: var(--space-5); border-right: 1px solid var(--color-border); }
+    .test-result-panel { padding: var(--space-5); }
+    .test-result-item {
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-2);
+    }
+    .test-pass { background: #F0FDF4; }
+    .test-fail { background: #FEF2F2; }
+    .test-na   { background: var(--color-surface); }
+    .test-icon { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+
+    /* ── Context bar ───────────────────────────── */
+    .studio-context-bar {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); margin-bottom: var(--space-5); font-size: 13px;
+    }
+    .studio-context-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; background: var(--color-panel);
+      border: 1px solid var(--color-border); border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+    }
+  </style>
+</head>
+<body class="studio-page">
+<div class="shell" id="app-shell">
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="Breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Eligibility Studio</h1>
+          <p class="page-subtitle">Private Car Comprehensive · v2026.04 — 6 product-level eligibility rules · 0 conflicts detected</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost" onclick="openConflictsModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M236.8 188.09L149.35 36.22a24.76 24.76 0 00-42.7 0L19.2 188.09a23.51 23.51 0 000 23.72A24.35 24.35 0 0040.55 224h174.9a24.35 24.35 0 0021.33-12.19 23.51 23.51 0 00.02-23.72zM120 144v-40a8 8 0 0116 0v40a8 8 0 01-16 0zm20 36a12 12 0 11-12-12 12 12 0 0112 12z" fill="currentColor"/></svg>
+            View Conflicts
+          </button>
+          <button class="btn btn-secondary" onclick="openTestModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M221.69 199.77L160 96.92V40h8a8 8 0 000-16H88a8 8 0 000 16h8v56.92L34.31 199.77A16 16 0 0048 224h160a16 16 0 0013.69-24.23z" fill="currentColor"/></svg>
+            Test Eligibility
+          </button>
+          <button class="btn btn-primary" onclick="openAddRuleModal()">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+            Add Rule
+          </button>
+        </div>
+      </div>
+
+      <!-- Context bar -->
+      <div class="studio-context-bar">
+        <span class="studio-context-pill">
+          <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>
+          PRD-001 · v2026.04
+        </span>
+        <span style="color:var(--color-muted)">·</span>
+        <span>6 rules &nbsp;·&nbsp; 0 conflicts &nbsp;·&nbsp; All active</span>
+        <div style="margin-left:auto"><a href="product-detail.html?id=PRD-001#studios" class="btn btn-ghost btn-sm">← Back to Product</a></div>
+      </div>
+
+      <!-- Published banner -->
+      <div class="published-only-banner" style="background:var(--color-brand-light);border:1px solid rgba(26,79,138,.2);border-radius:var(--radius-md);padding:var(--space-3) var(--space-5);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--color-brand);margin-bottom:var(--space-5)">
+        <span>📌 This version is <strong>Published</strong> — all rules are read-only.</span>
+        <button class="btn btn-primary btn-sm" onclick="PS.actionResult('info','Clone','Clone this version from Product Detail to make changes.')">Clone Version to Edit</button>
+      </div>
+
+      <!-- Two-panel layout -->
+      <div class="studio-layout">
+
+        <!-- LEFT: Rule List -->
+        <div class="rule-sidebar">
+          <div class="card">
+            <div class="card-header" style="padding:var(--space-4) var(--space-5)">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--color-muted)">Eligibility Rules</div>
+              <button class="btn btn-ghost btn-sm" onclick="openAddRuleModal()">+ Add</button>
+            </div>
+            <div class="rule-list" id="rule-list"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Rule Detail Panel -->
+        <div id="detail-panel" style="display:flex;flex-direction:column;gap:var(--space-4)">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="responsive-warning" role="status">Insurance Product Studio is optimized for desktop screens (1280px and wider).</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+/* ═══════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════ */
+const RULES = [
+  {
+    id:'ELG-001', name:'Min Driver Age', status:'active', category:'Product Eligibility', cover:'All Covers', priority:10,
+    description:'Policyholder must be at least 21 years of age at cover start date.',
+    direction:'ineligible',
+    conditions:[{ field:'driver_age', op:'<', value:'21' }],
+    logic:'and',
+    outcomeType:'hard', reasonCode:'ELIG-MIN-AGE',
+    customerMsg:"We're sorry, but this product is only available to drivers aged 21 and over.",
+    internalMsg:'Driver age below minimum product eligibility threshold (21 years).',
+    logAudit:true,
+    scopes:{ product:'Private Car Comprehensive', version:'2026.04', covers:['All Covers'], segments:['Personal Lines'], channels:['All Channels'] },
+    effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026'
+  },
+  {
+    id:'ELG-002', name:'Max Vehicle Age', status:'active', category:'Product Eligibility', cover:'All Covers', priority:20,
+    description:'Vehicle must be 15 years old or less to qualify for this product.',
+    direction:'ineligible',
+    conditions:[{ field:'vehicle_age', op:'>', value:'15' }],
+    logic:'and',
+    outcomeType:'hard', reasonCode:'ELIG-MAX-VEH-AGE',
+    customerMsg:'This product is only available for vehicles manufactured within the last 15 years.',
+    internalMsg:'Vehicle exceeds maximum age limit (15 years).',
+    logAudit:true,
+    scopes:{ product:'Private Car Comprehensive', version:'2026.04', covers:['All Covers'], segments:['Personal Lines'], channels:['All Channels'] },
+    effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026'
+  },
+  {
+    id:'ELG-003', name:'Jurisdiction Check', status:'active', category:'Product Eligibility', cover:'All Covers', priority:5,
+    description:'Product is only offered in India, UAE, and UK jurisdictions.',
+    direction:'ineligible',
+    conditions:[{ field:'policy_jurisdiction', op:'not in', value:'India, UAE, UK' }],
+    logic:'and',
+    outcomeType:'hard', reasonCode:'ELIG-JURISDICTION',
+    customerMsg:'This product is not available in your jurisdiction.',
+    internalMsg:'Policy jurisdiction outside permitted territories.',
+    logAudit:true,
+    scopes:{ product:'Private Car Comprehensive', version:'2026.04', covers:['All Covers'], segments:['Personal Lines'], channels:['All Channels'] },
+    effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026'
+  },
+  {
+    id:'ELG-004', name:'Vehicle Type Allowlist', status:'active', category:'Product Eligibility', cover:'All Covers', priority:15,
+    description:'Only specific private vehicle types are eligible for this product.',
+    direction:'eligible',
+    conditions:[{ field:'vehicle_type', op:'in', value:'Private Car, SUV, Hatchback, Sedan, Crossover' }],
+    logic:'and',
+    outcomeType:'hard', reasonCode:'ELIG-VEH-TYPE',
+    customerMsg:'Your vehicle type is not eligible for this product. Please see our commercial vehicle products.',
+    internalMsg:'Vehicle type not in permitted list for this product.',
+    logAudit:true,
+    scopes:{ product:'Private Car Comprehensive', version:'2026.04', covers:['All Covers'], segments:['Personal Lines'], channels:['All Channels'] },
+    effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026'
+  },
+  {
+    id:'ELG-005', name:'Max Insured Value', status:'active', category:'Cover Eligibility', cover:'Own Damage', priority:25,
+    description:'Own Damage cover is capped at $200,000 insured value for private vehicles.',
+    direction:'ineligible',
+    conditions:[{ field:'vehicle_insured_value', op:'>', value:'200000' }],
+    logic:'and',
+    outcomeType:'refer', reasonCode:'ELIG-MAX-SI',
+    customerMsg:'For vehicles valued above $200,000, a specialist underwriter will review your application.',
+    internalMsg:'Insured value exceeds standard limit — refer to specialist UW team.',
+    logAudit:true,
+    scopes:{ product:'Private Car Comprehensive', version:'2026.04', covers:['Own Damage'], segments:['Personal Lines'], channels:['All Channels'] },
+    effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026'
+  },
+  {
+    id:'ELG-006', name:'Min Licence Duration', status:'active', category:'Product Eligibility', cover:'All Covers', priority:30,
+    description:'Primary driver must have held a valid licence for at least 1 year.',
+    direction:'ineligible',
+    conditions:[{ field:'licence_duration_years', op:'<', value:'1' }],
+    logic:'and',
+    outcomeType:'soft', reasonCode:'ELIG-LICENCE-DUR',
+    customerMsg:'Drivers with less than 1 year of licence history may face additional premium loading.',
+    internalMsg:'Licence duration below 1 year — soft warning, quote proceeds with loading.',
+    logAudit:false,
+    scopes:{ product:'Private Car Comprehensive', version:'2026.04', covers:['All Covers'], segments:['Personal Lines'], channels:['All Channels'] },
+    effectiveFrom:'01-Apr-2026', effectiveTo:'30-Sep-2026'
+  }
+];
+
+const OPERATORS = ['=','≠','<','≤','>','≥','in','not in','is blank','is not blank','contains','starts with'];
+const ATTRIBUTES = ['driver_age','vehicle_age','policy_jurisdiction','vehicle_type','vehicle_insured_value','licence_duration_years','annual_mileage','purpose_of_use','driver_conviction_history'];
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let activeRuleId = 'ELG-001';
+let openSections = new Set(['identity','condition','outcome','scope','effective','preview']);
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  PS.nav.render('catalogue', [
+    { label:'Product Catalogue', href:'catalogue.html' },
+    { label:'PRD-001', href:'product-detail.html?id=PRD-001' },
+    { label:'v2026.04', href:'product-detail.html?id=PRD-001&version=2026.04' },
+    { label:'Eligibility Studio', href:'#' }
+  ]);
+  renderRuleList();
+  loadRule(activeRuleId);
+});
+
+/* ═══════════════════════════════════════════════
+   RULE LIST
+═══════════════════════════════════════════════ */
+function renderRuleList() {
+  const productRules = RULES.filter(r => r.category === 'Product Eligibility');
+  const coverRules   = RULES.filter(r => r.category === 'Cover Eligibility');
+
+  const listHTML = (rules) => rules.map(r => {
+    const iconCls = r.status==='active'?'rule-status-active':r.status==='warning'?'rule-status-warning':'rule-status-off';
+    const icon = r.status==='active'?'✓':r.status==='warning'?'⚠':'✕';
+    return `
+    <div class="rule-item ${r.id===activeRuleId?'active':''}" onclick="loadRule('${r.id}')" id="rule-item-${r.id}">
+      <span class="rule-status-icon ${iconCls}">${icon}</span>
+      <div class="rule-item-body">
+        <div class="rule-item-name">${r.name}</div>
+        <div class="rule-item-meta">
+          <span>${r.effectiveFrom} — ${r.effectiveTo}</span>
+          ${r.cover!=='All Covers'?`<span class="rule-cover-badge">${r.cover}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('rule-list').innerHTML = `
+    <div class="rule-section-label">Product Eligibility</div>
+    ${listHTML(productRules)}
+    ${coverRules.length ? `<div class="rule-section-label" style="margin-top:var(--space-3)">Cover Eligibility</div>${listHTML(coverRules)}` : ''}
+    <button class="rule-add-btn" onclick="openAddRuleModal()">
+      <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+      Add eligibility rule
+    </button>
+  `;
+}
+
+/* ═══════════════════════════════════════════════
+   LOAD RULE
+═══════════════════════════════════════════════ */
+function loadRule(id) {
+  activeRuleId = id;
+  document.querySelectorAll('.rule-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`rule-item-${id}`)?.classList.add('active');
+
+  const rule = RULES.find(r => r.id === id);
+  if (!rule) return;
+  renderDetailPanel(rule);
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER DETAIL PANEL
+═══════════════════════════════════════════════ */
+function renderDetailPanel(r) {
+  const ro = !(window.PS.prototypeApp && window.PS.prototypeApp.canEditVersion());
+  const panel = document.getElementById('detail-panel');
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-2)">
+      <h2 style="font-size:18px;font-weight:700">${r.name}</h2>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-muted);background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:2px 7px">${r.id}</span>
+      <span class="badge badge-${r.status==='active'?'published':'draft'}" style="font-size:10px">${r.status.toUpperCase()}</span>
+      ${r.cover!=='All Covers'?`<span class="rule-cover-badge" style="font-size:11px;height:20px;padding:0 8px">${r.cover}</span>`:''}
+    </div>
+
+    ${buildSection('identity','1','Rule Identity',`${r.category} · Priority ${r.priority}`, `
+      <div class="form-grid-2">
+        ${rof('Rule ID', r.id, true)}
+        ${rof('Rule Name', r.name)}
+        ${rof('Rule Category', r.category)}
+        ${rof('Priority', String(r.priority))}
+        ${rof('Applicable Cover', r.cover)}
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <div class="toggle-wrap">
+            <div class="toggle-switch toggle-on"><div class="toggle-slider"></div><div class="toggle-dot"></div></div>
+            <span>Active</span>
+          </div>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Description</label>
+          <p style="font-size:13px;color:var(--color-muted);line-height:20px">${r.description}</p>
+        </div>
+      </div>
+    `)}
+
+    ${buildSection('condition','2','Condition Builder',formatConditionSummary(r), `
+      <div class="condition-builder">
+        <div class="cb-header">
+          <div class="cb-direction">
+            <button class="cb-dir-btn ${r.direction==='ineligible'?'active':''}" disabled>Ineligible When</button>
+            <button class="cb-dir-btn ${r.direction==='eligible'?'active':''}" disabled>Eligible Only When</button>
+          </div>
+          <div class="cb-logic">
+            <button class="cb-logic-btn ${r.logic==='and'?'active':''}" disabled>ALL (AND)</button>
+            <button class="cb-logic-btn ${r.logic==='or'?'active':''}" disabled>ANY (OR)</button>
+          </div>
+        </div>
+        ${r.conditions.map((c,i) => `
+          ${i>0 ? `<div class="cb-connector">${r.logic.toUpperCase()}</div>` : ''}
+          <div class="cb-row">
+            <select class="form-control" style="flex:1.5" disabled>
+              ${ATTRIBUTES.map(a=>`<option ${a===c.field?'selected':''}>${a}</option>`).join('')}
+            </select>
+            <select class="form-control" style="width:100px" disabled>
+              ${OPERATORS.map(o=>`<option ${o===c.op?'selected':''}>${o}</option>`).join('')}
+            </select>
+            <input type="text" class="form-control" style="flex:1" value="${c.value}" readonly>
+          </div>
+        `).join('')}
+        <div class="cb-actions">
+          <button class="btn btn-ghost btn-sm" disabled>+ Add Condition</button>
+          <button class="btn btn-ghost btn-sm" disabled>+ Add OR Group</button>
+        </div>
+      </div>
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--color-brand)">
+        <span style="font-size:11px;color:var(--color-muted);display:block;margin-bottom:4px">Compiled expression:</span>
+        ${r.direction==='ineligible'?'INELIGIBLE':'ELIGIBLE'} when ${r.conditions.map(c=>`${c.field} ${c.op} ${c.value}`).join(` ${r.logic.toUpperCase()} `)}
+      </div>
+    `)}
+
+    ${buildSection('outcome','3','Outcome Configuration', outcomeLabel(r.outcomeType), `
+      <div class="outcome-type-selector">
+        <div class="outcome-card ${r.outcomeType==='hard'?'selected':''}">
+          <div class="outcome-card-icon">🛑</div>
+          <div class="outcome-card-label">Hard Block</div>
+          <div class="outcome-card-desc">No quotation permitted</div>
+        </div>
+        <div class="outcome-card ${r.outcomeType==='soft'?'selected':''}">
+          <div class="outcome-card-icon">⚠️</div>
+          <div class="outcome-card-label">Soft Warning</div>
+          <div class="outcome-card-desc">Quote proceeds with warning</div>
+        </div>
+        <div class="outcome-card ${r.outcomeType==='refer'?'selected':''}">
+          <div class="outcome-card-icon">👤</div>
+          <div class="outcome-card-label">Refer to UW</div>
+          <div class="outcome-card-desc">Routes to underwriter queue</div>
+        </div>
+      </div>
+      <div class="form-grid-2">
+        ${rof('Reason Code', r.reasonCode, true)}
+        <div class="form-group">
+          <label class="form-label">Log to Audit</label>
+          <div class="toggle-wrap">
+            <div class="toggle-switch ${r.logAudit?'toggle-on':'toggle-off'}"><div class="toggle-slider"></div><div class="toggle-dot"></div></div>
+            <span>${r.logAudit?'Yes':'No'}</span>
+          </div>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Customer-facing Message</label>
+          <p style="font-size:13px;color:var(--color-ink);line-height:20px;background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);border:1px solid var(--color-border)">"${r.customerMsg}"</p>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Internal Message</label>
+          <p style="font-size:13px;color:var(--color-muted);line-height:20px">${r.internalMsg}</p>
+        </div>
+      </div>
+    `)}
+
+    ${buildSection('scope','4','Scope',`${r.scopes.covers.join(', ')} · ${r.scopes.channels.join(', ')}`, `
+      <div class="form-grid-2">
+        ${rof('Applies to Product', r.scopes.product)}
+        ${rof('Applies to Version', r.scopes.version)}
+        <div class="form-group">
+          <label class="form-label">Applies to Covers</label>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">${r.scopes.covers.map(c=>`<span style="display:inline-flex;height:24px;padding:0 10px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:100px;font-size:12px;font-weight:500;align-items:center">${c}</span>`).join('')}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Applies to Segments</label>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">${r.scopes.segments.map(s=>`<span style="display:inline-flex;height:24px;padding:0 10px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:100px;font-size:12px;font-weight:500;align-items:center">${s}</span>`).join('')}</div>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Applies to Channels</label>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">${r.scopes.channels.map(c=>`<span style="display:inline-flex;height:24px;padding:0 10px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:100px;font-size:12px;font-weight:500;align-items:center">${c}</span>`).join('')}</div>
+        </div>
+      </div>
+    `)}
+
+    ${buildSection('effective','5','Effective Dates', `${r.effectiveFrom} — ${r.effectiveTo}`, `
+      <div class="form-grid-2">
+        ${rof('Effective From', r.effectiveFrom)}
+        ${rof('Effective To', r.effectiveTo)}
+      </div>
+      <div style="margin-top:var(--space-3)">
+        <div class="toggle-wrap">
+          <div class="toggle-switch toggle-off"><div class="toggle-slider"></div><div class="toggle-dot"></div></div>
+          <span style="font-size:13px;color:var(--color-muted)">Override effective period (use dates different from the product version)</span>
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:var(--space-4)">
+        <div class="callout-body" style="font-size:12px">These dates inherit from the product version effective period. Toggle the override to set a narrower window.</div>
+      </div>
+    `)}
+
+    ${buildSection('preview','6','Rule Preview','Live summary of the complete rule', `
+      <div class="rule-preview-box">
+        <div class="rp-title">${r.name} (${r.id})</div>
+        <div class="rp-meta">${r.status==='active'?'Active':'Inactive'} · Priority ${r.priority} · ${r.cover}</div>
+        <div class="rp-line"><span class="rp-label">Condition:</span><span class="rp-value">${r.direction==='ineligible'?'INELIGIBLE':'ELIGIBLE'} when ${r.conditions.map(c=>`${c.field} ${c.op} ${c.value}`).join(` ${r.logic.toUpperCase()} `)}</span></div>
+        <div class="rp-line"><span class="rp-label">Outcome:</span><span class="rp-value">${outcomeLabel(r.outcomeType)}</span></div>
+        <div class="rp-line"><span class="rp-label">Message:</span><span class="rp-message">"${r.customerMsg}"</span></div>
+        <div class="rp-line"><span class="rp-label">Effective:</span><span class="rp-value">${r.effectiveFrom} to ${r.effectiveTo}</span></div>
+      </div>
+    `)}
+  `;
+
+  openSections.forEach(id => {
+    document.getElementById(`sec-body-${id}`)?.classList.add('open');
+    document.getElementById(`sec-chev-${id}`)?.classList.add('open');
+  });
+}
+
+function buildSection(id, num, title, subtitle, content) {
+  const isOpen = openSections.has(id);
+  return `<div class="section-card">
+    <div class="section-header" onclick="toggleSection('${id}')">
+      <div class="section-header-left">
+        <div class="section-number">${num}</div>
+        <div><div class="section-title">${title}</div><div class="section-subtitle">${subtitle}</div></div>
+      </div>
+      <svg class="section-chevron ${isOpen?'open':''}" id="sec-chev-${id}" width="16" height="16" viewBox="0 0 256 256" fill="none">
+        <path d="M181.66 133.66l-80 80a8 8 0 01-11.32-11.32L164.69 128 90.34 53.66a8 8 0 0111.32-11.32l80 80a8 8 0 010 11.32z" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="section-body ${isOpen?'open':''}" id="sec-body-${id}">
+      <div class="section-inner">${content}</div>
+    </div>
+  </div>`;
+}
+
+function toggleSection(id) {
+  const body = document.getElementById(`sec-body-${id}`);
+  const chev = document.getElementById(`sec-chev-${id}`);
+  const isOpen = body?.classList.contains('open');
+  if (isOpen) { body?.classList.remove('open'); chev?.classList.remove('open'); openSections.delete(id); }
+  else        { body?.classList.add('open');    chev?.classList.add('open');    openSections.add(id); }
+}
+
+function rof(label, value, mono=false) {
+  return `<div class="form-group"><label class="form-label">${label}</label>
+    <div style="font-size:${mono?'12px':'14px'};font-family:${mono?"'IBM Plex Mono',monospace":'inherit'};color:var(--color-ink);padding:4px 0">${value||'—'}</div>
+  </div>`;
+}
+
+function formatConditionSummary(r) {
+  return `${r.direction==='ineligible'?'INELIGIBLE':'ELIGIBLE'} when ${r.conditions.map(c=>`${c.field} ${c.op} ${c.value}`).join(` ${r.logic} `)}`;
+}
+
+function outcomeLabel(type) {
+  return type==='hard'?'Hard Block':type==='soft'?'Soft Warning':'Refer to Underwriter';
+}
+
+/* ═══════════════════════════════════════════════
+   TEST ELIGIBILITY MODAL
+═══════════════════════════════════════════════ */
+function openTestModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Test Eligibility</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="test-layout">
+        <div class="test-input-panel">
+          <div style="font-size:14px;font-weight:600;margin-bottom:var(--space-4)">Test Input Values</div>
+          <div class="form-group">
+            <label class="form-label">driver_age</label>
+            <input type="number" id="test-age" class="form-control" placeholder="e.g. 19" value="19">
+          </div>
+          <div class="form-group">
+            <label class="form-label">vehicle_age</label>
+            <input type="number" id="test-veh-age" class="form-control" placeholder="e.g. 3" value="3">
+          </div>
+          <div class="form-group">
+            <label class="form-label">policy_jurisdiction</label>
+            <select id="test-jurisdiction" class="form-control">
+              <option>India</option><option>UAE</option><option>UK</option><option>Australia</option><option>USA</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">vehicle_type</label>
+            <select id="test-veh-type" class="form-control">
+              <option>Private Car</option><option>SUV</option><option>Truck</option><option>Motorcycle</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">vehicle_insured_value</label>
+            <input type="number" id="test-si" class="form-control" placeholder="e.g. 30000" value="30000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">licence_duration_years</label>
+            <input type="number" id="test-licence" class="form-control" placeholder="e.g. 2" value="2">
+          </div>
+          <button class="btn btn-primary" onclick="runEligibilityTest()" style="width:100%;justify-content:center;margin-top:var(--space-3)">
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M221.69 199.77L160 96.92V40h8a8 8 0 000-16H88a8 8 0 000 16h8v56.92L34.31 199.77A16 16 0 0048 224h160a16 16 0 0013.69-24.23z" fill="currentColor"/></svg>
+            Run Eligibility Check
+          </button>
+        </div>
+        <div class="test-result-panel" id="test-results">
+          <div style="text-align:center;padding:48px 24px;color:var(--color-muted)">
+            <div style="font-size:28px;margin-bottom:8px">🧪</div>
+            <div style="font-size:14px;font-weight:500">Enter values and click Run</div>
+            <div style="font-size:13px;margin-top:4px">Results will appear here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="PS.actionResult('info','Saved','Test case saved to simulation library.')">Save as Test Case</button>
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `, 'modal-lg');
+}
+
+function runEligibilityTest() {
+  const age = parseInt(document.getElementById('test-age')?.value || 0);
+  const vehAge = parseInt(document.getElementById('test-veh-age')?.value || 0);
+  const jurisdiction = document.getElementById('test-jurisdiction')?.value || '';
+  const vehType = document.getElementById('test-veh-type')?.value || '';
+  const si = parseInt(document.getElementById('test-si')?.value || 0);
+  const licence = parseInt(document.getElementById('test-licence')?.value || 0);
+
+  const results = [
+    { rule: RULES[0], pass: age >= 21, input: `driver_age = ${age}` },
+    { rule: RULES[1], pass: vehAge <= 15, input: `vehicle_age = ${vehAge}` },
+    { rule: RULES[2], pass: ['India','UAE','UK'].includes(jurisdiction), input: `jurisdiction = ${jurisdiction}` },
+    { rule: RULES[3], pass: ['Private Car','SUV','Hatchback','Sedan','Crossover'].includes(vehType), input: `vehicle_type = ${vehType}` },
+    { rule: RULES[4], pass: si <= 200000, input: `insured_value = $${si.toLocaleString()}` },
+    { rule: RULES[5], pass: licence >= 1, input: `licence_years = ${licence}` }
+  ];
+
+  const triggered = results.filter(r => !r.pass);
+  const eligible = triggered.length === 0;
+  const hardBlocks = triggered.filter(r => r.rule.outcomeType === 'hard');
+
+  const resultPanel = document.getElementById('test-results');
+  resultPanel.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-5);padding:var(--space-4);border-radius:var(--radius-md);${eligible?'background:#F0FDF4;border:1px solid #86EFAC':'background:#FEF2F2;border:1px solid #FCA5A5'}">
+      <span style="font-size:24px">${eligible?'✅':'❌'}</span>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:${eligible?'var(--color-success)':'var(--color-danger)'}">${eligible?'ELIGIBLE':'INELIGIBLE'}</div>
+        <div style="font-size:13px;color:var(--color-muted)">${results.length} rules evaluated · ${triggered.length} triggered</div>
+      </div>
+    </div>
+
+    ${results.map(r => {
+      const cls = r.pass ? 'test-pass' : 'test-fail';
+      const icon = r.pass ? '✅' : '❌';
+      return `
+      <div class="test-result-item ${cls}">
+        <span class="test-icon">${icon}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${r.rule.name} (${r.rule.id})</div>
+          <div style="font-size:12px;color:var(--color-muted);margin-top:2px">${r.input} — ${r.pass?'PASS':'TRIGGERED'}</div>
+          ${!r.pass?`<div style="font-size:12px;margin-top:4px;color:var(--color-danger)"><strong>${outcomeLabel(r.rule.outcomeType)}:</strong> "${r.rule.customerMsg}"</div>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+/* ═══════════════════════════════════════════════
+   CONFLICTS MODAL
+═══════════════════════════════════════════════ */
+function openConflictsModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Rule Conflicts</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-success" style="margin-bottom:var(--space-4)">
+        <div class="callout-body">
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px">No conflicts detected</div>
+          <div style="font-size:13px;color:var(--color-muted)">All 6 eligibility rules have been analysed. No overlapping or contradictory conditions found.</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--color-muted);border-bottom:1px solid var(--color-border)">Rule Pair</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--color-muted);border-bottom:1px solid var(--color-border)">Type</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--color-muted);border-bottom:1px solid var(--color-border)">Severity</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--color-muted);border-bottom:1px solid var(--color-border)">Status</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td colspan="4" style="text-align:center;padding:32px;color:var(--color-muted);font-size:13px">
+              ✅ No conflicts detected across 6 rules
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Close</button>
+    </div>
+  `, 'modal-sm');
+}
+
+/* ═══════════════════════════════════════════════
+   ADD RULE MODAL
+═══════════════════════════════════════════════ */
+function openAddRuleModal() {
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Add Eligibility Rule</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="form-group">
+          <label class="form-label" for="ar-name">Rule Name <span class="required">*</span></label>
+          <input type="text" id="ar-name" class="form-control" placeholder="e.g. Max Driver Age">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ar-cat">Category <span class="required">*</span></label>
+          <select id="ar-cat" class="form-control">
+            <option>Product Eligibility</option><option>Cover Eligibility</option><option>Variant Eligibility</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Applicable Cover</label>
+          <select class="form-control"><option>All Covers</option><option>Own Damage</option><option>Third Party Liability</option><option>Personal Accident</option><option>Roadside Assistance</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <input type="number" class="form-control" placeholder="10" value="10">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" rows="2" placeholder="Brief description of what this rule checks…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createEligibilityRule()">Create Rule</button>
+    </div>
+  `);
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>

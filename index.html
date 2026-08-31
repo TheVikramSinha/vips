@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Product Studio | VeriDex</title>
+  <meta name="description" content="Insurance Product Studio Dashboard — overview of all products, pending actions, and lifecycle pipeline.">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="shell" id="app-shell">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo" id="topbar-logo"></a>
+    <div class="topbar-divider"></div>
+    <nav class="topbar-breadcrumb" aria-label="Breadcrumb" id="topbar-breadcrumb"></nav>
+    <div class="topbar-right" id="topbar-right"></div>
+  </header>
+
+  <!-- Sidenav -->
+  <nav class="sidenav" id="sidenav" aria-label="Primary navigation"></nav>
+
+  <!-- Main Content -->
+  <main class="main-content" id="main-content">
+    <div class="page-inner">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title" id="page-greeting">Good morning, Anika.</h1>
+          <p class="page-subtitle" id="page-subtitle">Insurance Product Studio — August 2026</p>
+        </div>
+        <div class="page-header-actions">
+          <div class="dropdown" id="quick-actions-dropdown">
+            <button class="btn btn-primary" id="quick-actions-btn" onclick="toggleQuickActions()" aria-haspopup="true" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+              Quick Actions
+              <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M213.66 101.66l-80 80a8 8 0 01-11.32 0l-80-80a8 8 0 0111.32-11.32L128 164.69l74.34-74.35a8 8 0 0111.32 11.32z" fill="currentColor"/></svg>
+            </button>
+            <div class="dropdown-menu hidden" id="quick-actions-menu">
+              <div class="dropdown-item" onclick="handleQuickAction('new-product')">
+                <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M224 128a8 8 0 01-8 8h-80v80a8 8 0 01-16 0v-80H40a8 8 0 010-16h80V40a8 8 0 0116 0v80h80a8 8 0 018 8z" fill="currentColor"/></svg>
+                New Product
+              </div>
+              <div class="dropdown-item" onclick="handleQuickAction('clone-product')">
+                <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M216 32H88a8 8 0 00-8 8v40H40a8 8 0 00-8 8v128a8 8 0 008 8h128a8 8 0 008-8v-40h40a8 8 0 008-8V40a8 8 0 00-8-8zm-56 176H48V96h112zm48-48h-32V88a8 8 0 00-8-8H96V48h112z" fill="currentColor"/></svg>
+                Clone Existing Product
+              </div>
+              <div class="dropdown-sep"></div>
+              <div class="dropdown-item" onclick="handleQuickAction('run-simulation')">
+                <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M221.69 199.77L160 96.92V40h8a8 8 0 000-16H88a8 8 0 000 16h8v56.92L34.31 199.77A16 16 0 0048 224h160a16 16 0 0013.69-24.23z" fill="currentColor"/></svg>
+                Run Simulation
+              </div>
+              <div class="dropdown-item" onclick="window.location.href='audit-log.html'">
+                <svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M232 128A104 104 0 1128 71.12V56a8 8 0 00-16 0v40a8 8 0 008 8h40a8 8 0 000-16H43.8A88 88 0 11232 128zm-96-64a8 8 0 00-8 8v56a8 8 0 004.69 7.23l48 24a8 8 0 006.61-14.46L136 127.25V72a8 8 0 00-8-8z" fill="currentColor"/></svg>
+                View Audit Log
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: KPI Strip -->
+      <div class="kpi-strip" id="kpi-strip">
+        <div class="kpi-card" id="kpi-active">
+          <div class="kpi-number">14</div>
+          <div class="kpi-label">Total Active Products</div>
+          <div class="kpi-sub">
+            <span class="kpi-trend-up">↑ 2</span> vs last month
+            &nbsp;·&nbsp; Published and Approved versions
+          </div>
+        </div>
+        <div class="kpi-card clickable" id="kpi-pending" onclick="window.location.href='governance.html'" style="cursor:pointer" title="View pending approvals">
+          <div class="kpi-number">3</div>
+          <div class="kpi-label">Pending Approval</div>
+          <div class="kpi-sub">
+            <span class="kpi-trend-down">↑ 1</span> vs last month
+            &nbsp;·&nbsp; Awaiting governance action
+          </div>
+        </div>
+        <div class="kpi-card clickable" id="kpi-draft" onclick="window.location.href='catalogue.html?status=draft'" style="cursor:pointer" title="View drafts">
+          <div class="kpi-number">7</div>
+          <div class="kpi-label">In Draft</div>
+          <div class="kpi-sub">
+            <span class="kpi-trend-up">↑ 3</span> vs last month
+            &nbsp;·&nbsp; Versions in active design
+          </div>
+        </div>
+        <div class="kpi-card" id="kpi-published">
+          <div class="kpi-number">2</div>
+          <div class="kpi-label">Published This Month</div>
+          <div class="kpi-sub">
+            <span style="color:var(--color-muted)">— same</span> as last month
+            &nbsp;·&nbsp; Released this calendar month
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3+4: Pending Actions + Activity Feed -->
+      <div class="layout-cols layout-8-4 mb-6">
+
+        <!-- Pending Actions -->
+        <div class="card" id="pending-actions-card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-title">Needs Your Attention</div>
+              <div class="card-subtitle">Actions assigned to your role or awaiting your input.</div>
+            </div>
+            <span class="badge badge-review" role="status">3 items</span>
+          </div>
+          <div class="table-wrap">
+            <table id="pending-actions-table" aria-label="Pending actions">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Product</th>
+                  <th>Detail</th>
+                  <th>Since</th>
+                  <th style="width:80px">Action</th>
+                </tr>
+              </thead>
+              <tbody id="pending-actions-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="card" id="activity-card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-title">Recent Activity</div>
+              <div class="card-subtitle">Latest changes across all products.</div>
+            </div>
+          </div>
+          <div style="max-height:420px;overflow-y:auto;padding:0 var(--space-6)">
+            <div class="activity-feed" id="activity-feed"></div>
+          </div>
+          <div class="card-footer">
+            <a href="audit-log.html" class="btn btn-ghost btn-sm">View Full Audit Log →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Product Status Overview Table -->
+      <div class="card mb-6" id="product-status-card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="card-title">All Products</div>
+          </div>
+          <div class="flex-center gap-3">
+            <div class="dropdown">
+              <button class="btn btn-secondary btn-sm" onclick="toggleStatusFilter(this)" id="status-filter-btn">
+                Filter by Status
+                <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M213.66 101.66l-80 80a8 8 0 01-11.32 0l-80-80a8 8 0 0111.32-11.32L128 164.69l74.34-74.35a8 8 0 0111.32 11.32z" fill="currentColor"/></svg>
+              </button>
+              <div class="dropdown-menu hidden" id="status-filter-menu">
+                <div class="dropdown-item" onclick="filterByStatus('all')">All Statuses</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="filterByStatus('draft')"><span class="badge badge-draft">Draft</span></div>
+                <div class="dropdown-item" onclick="filterByStatus('review')"><span class="badge badge-review">In Review</span></div>
+                <div class="dropdown-item" onclick="filterByStatus('approved')"><span class="badge badge-approved">Approved</span></div>
+                <div class="dropdown-item" onclick="filterByStatus('published')"><span class="badge badge-published">Published</span></div>
+                <div class="dropdown-item" onclick="filterByStatus('superseded')"><span class="badge badge-superseded">Superseded</span></div>
+                <div class="dropdown-item" onclick="filterByStatus('retired')"><span class="badge badge-retired">Retired</span></div>
+              </div>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-secondary btn-sm" onclick="toggleFamilyFilter(this)">
+                Filter by Family
+                <svg width="12" height="12" viewBox="0 0 256 256" fill="none"><path d="M213.66 101.66l-80 80a8 8 0 01-11.32 0l-80-80a8 8 0 0111.32-11.32L128 164.69l74.34-74.35a8 8 0 0111.32 11.32z" fill="currentColor"/></svg>
+              </button>
+              <div class="dropdown-menu hidden" id="family-filter-menu">
+                <div class="dropdown-item" onclick="filterByFamily('all')">All Families</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="filterByFamily('Motor')">Motor</div>
+                <div class="dropdown-item" onclick="filterByFamily('Health')">Health</div>
+                <div class="dropdown-item" onclick="filterByFamily('Property')">Property</div>
+                <div class="dropdown-item" onclick="filterByFamily('Marine')">Marine</div>
+                <div class="dropdown-item" onclick="filterByFamily('Travel')">Travel</div>
+              </div>
+            </div>
+            <div style="position:relative">
+              <input type="search" id="product-search" placeholder="Search products…" class="form-control" style="height:30px;width:180px;font-size:13px;padding-left:30px" oninput="filterProducts()">
+              <svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--color-muted)" width="13" height="13" viewBox="0 0 256 256" fill="none"><path d="M229.66 218.34l-50.07-50.07a88 88 0 10-11.31 11.31l50.06 50.07a8 8 0 0011.32-11.31zM40 112a72 72 0 1172 72 72.08 72.08 0 01-72-72z" fill="currentColor"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="products-table" aria-label="All products">
+            <thead>
+              <tr>
+                <th class="th-sort" onclick="sortTable('name')">Product <span class="sort-icon" id="sort-name">↕</span></th>
+                <th>Family</th>
+                <th>Latest Version</th>
+                <th class="text-center">Status</th>
+                <th>Effective From</th>
+                <th>Effective To</th>
+                <th class="th-sort" onclick="sortTable('lastModified')">Last Modified <span class="sort-icon" id="sort-lastModified">↕</span></th>
+                <th class="text-center">Pending</th>
+                <th style="width:130px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="products-body"></tbody>
+          </table>
+        </div>
+        <div class="card-footer">
+          <div class="pagination" id="pagination">
+            <span class="pagination-info" id="pagination-info">Showing 1–6 of 6</span>
+            <button class="page-btn" disabled aria-label="Previous page">‹</button>
+            <button class="page-btn active" aria-label="Page 1">1</button>
+            <button class="page-btn" disabled aria-label="Next page">›</button>
+          </div>
+          <select class="form-control" style="height:30px;width:100px;font-size:13px" aria-label="Items per page">
+            <option>25 / page</option><option>50 / page</option><option>100 / page</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section 6: Lifecycle Pipeline -->
+      <div class="card" id="pipeline-card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="card-title">Product Lifecycle Pipeline</div>
+            <div class="card-subtitle">Count of product versions currently at each stage.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="pipeline" id="lifecycle-pipeline">
+            <div class="pipeline-stage" style="background:#F1F5F9;color:var(--status-draft)" onclick="window.location.href='catalogue.html?status=draft'" title="Draft: Private Car Third Party Only, Travel Agent Pro, Marine Hull…">
+              <div class="pipeline-stage-label">Draft</div>
+              <div class="pipeline-stage-count">7</div>
+            </div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-stage" style="background:#FEF3C7;color:var(--status-review)" onclick="window.location.href='catalogue.html?status=review'" title="In Review: SME Property All Risks, Group Life Basic, Crop Index">
+              <div class="pipeline-stage-label">In Review</div>
+              <div class="pipeline-stage-count">3</div>
+            </div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-stage" style="background:#DBEAFE;color:var(--status-approved)" onclick="window.location.href='catalogue.html?status=approved'" title="Approved: Group Health Corporate Plan">
+              <div class="pipeline-stage-label">Approved</div>
+              <div class="pipeline-stage-count">1</div>
+            </div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-stage" style="background:#DCFCE7;color:var(--status-published)" onclick="window.location.href='catalogue.html?status=published'" title="Published: Private Car Comprehensive, Home Protect, Retail SME, Travel Worldwide Annual Legacy">
+              <div class="pipeline-stage-label">Published</div>
+              <div class="pipeline-stage-count">4</div>
+            </div>
+          </div>
+
+          <div class="pipeline-terminal">
+            <span style="font-size:12px;color:var(--color-muted);font-weight:500;text-transform:uppercase;letter-spacing:.4px">Terminal states:</span>
+            <span class="pipeline-terminal-pill" style="background:var(--status-superseded-bg);color:var(--status-superseded)">
+              <span>●</span> Superseded: 2
+            </span>
+            <span class="pipeline-terminal-pill" style="background:var(--status-retired-bg);color:var(--status-retired)">
+              <span>●</span> Retired: 3
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Responsive warning -->
+<div class="responsive-warning" role="status">
+  Insurance Product Studio is optimized for desktop screens (1280px and wider).
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/nav.js"></script>
+<script src="assets/components.js"></script>
+<script>
+/* ── Init ──────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function() {
+  // Render nav
+  PS.nav.render('dashboard', [{ label: 'Dashboard', href: 'index.html' }]);
+
+  // Time-aware greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('page-greeting').textContent = `${greeting}, ${PS.data.currentUser.name.split(' ')[0]}.`;
+
+  // Month/Year subtitle
+  const now = new Date();
+  const monthYear = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  document.getElementById('page-subtitle').textContent = `Insurance Product Studio — ${monthYear}`;
+
+  // Render sections
+  renderPendingActions();
+  renderActivityFeed();
+  renderProductsTable();
+});
+
+/* ── Pending Actions ──────────────────────────────────────── */
+function renderPendingActions() {
+  const body = document.getElementById('pending-actions-body');
+  const typeIcons = {
+    approval: `<svg width="14" height="14" viewBox="0 0 256 256" fill="none" style="color:var(--status-review)"><path d="M208 40H48a16 16 0 00-16 16v58.67c0 89.18 71.16 121.55 90.6 128.63a15.91 15.91 0 0010.8 0c19.44-7.08 90.6-39.45 90.6-128.63V56a16 16 0 00-16-16z" fill="currentColor"/></svg>`,
+    draft: `<svg width="14" height="14" viewBox="0 0 256 256" fill="none" style="color:var(--color-warning)"><path d="M236.8 188.09L149.35 36.22a24.76 24.76 0 00-42.7 0L19.2 188.09a23.51 23.51 0 000 23.72A24.35 24.35 0 0040.55 224h174.9a24.35 24.35 0 0021.33-12.19 23.51 23.51 0 00.02-23.72z" fill="currentColor"/></svg>`,
+    expiring: `<svg width="14" height="14" viewBox="0 0 256 256" fill="none" style="color:var(--color-warning)"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>`
+  };
+  body.innerHTML = PS.data.pendingActions.map((item, i) => `
+    <tr id="pending-row-${i}">
+      <td>
+        <div class="flex-center gap-2">
+          ${typeIcons[item.type] || ''}
+          <span style="font-size:13px;font-weight:500">${item.typeLabel}</span>
+        </div>
+      </td>
+      <td>
+        <a href="product-detail.html?id=${item.productId}" style="font-size:13px;font-weight:500">${item.product}</a>
+      </td>
+      <td style="font-size:13px;color:var(--color-muted);max-width:220px">
+        <span title="${item.detail}">${item.detail.length > 55 ? item.detail.slice(0,55)+'…' : item.detail}</span>
+      </td>
+      <td style="font-size:13px;color:var(--color-muted);white-space:nowrap">${item.since}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="handlePendingAction('${item.type}','${item.productId}')">${item.action}</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function handlePendingAction(type, productId) {
+  if (type === 'approval') window.location.href = 'governance.html';
+  else if (type === 'draft') window.location.href = `rating-studio.html?product=${productId}`;
+  else window.location.href = `product-detail.html?id=${productId}`;
+}
+
+/* ── Activity Feed ────────────────────────────────────────── */
+function renderActivityFeed() {
+  const feed = document.getElementById('activity-feed');
+  feed.innerHTML = PS.data.activityFeed.map(item => {
+    const user = PS.getUser(item.userId);
+    const badge = item.status ? `<span class="badge badge-${item.status}">${PS.statusLabel(item.status)}</span>` : '';
+    return `
+    <div class="activity-item">
+      <div class="activity-avatar ${user.avatarClass}">${user.initials}</div>
+      <div class="activity-content">
+        <div class="activity-text">
+          <strong>${user.name}</strong> ${item.action}
+          ${item.subject ? `<span style="font-style:italic;color:var(--color-ink)">${item.subject}</span>` : ''}
+        </div>
+        <div class="activity-meta">${item.time} ${badge}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Products Table ───────────────────────────────────────── */
+let _currentStatus = 'all';
+let _currentFamily = 'all';
+let _sortKey = null;
+let _sortDir = 1;
+
+function renderProductsTable(data) {
+  const rows = data || getFilteredProducts();
+  const body = document.getElementById('products-body');
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state" style="padding:40px 24px">
+      <div class="empty-state-title">No products match your filters</div>
+      <div class="empty-state-desc">Try adjusting your filter or search criteria.</div>
+      <button class="btn btn-secondary btn-sm" onclick="resetFilters()">Clear Filters</button>
+    </div></td></tr>`;
+    document.getElementById('pagination-info').textContent = 'Showing 0 of 0';
+    return;
+  }
+  body.innerHTML = rows.map(p => {
+    const effectiveTo = p.effectiveTo;
+    const isExpiring = effectiveTo && isWithin30Days(effectiveTo);
+    const toStyle = isExpiring ? `style="color:var(--color-warning);font-weight:500"` : '';
+    const pendingIcon = p.pending
+      ? `<svg width="16" height="16" viewBox="0 0 256 256" fill="none" style="color:var(--color-warning)"><path d="M128 24a104 104 0 100 208A104 104 0 00128 24zm0 192a88 88 0 110-176 88 88 0 010 176zm64-88a8 8 0 01-8 8h-56a8 8 0 01-8-8V72a8 8 0 0116 0v48h48a8 8 0 018 8z" fill="currentColor"/></svg>`
+      : '';
+    return `
+    <tr onclick="window.location.href='product-detail.html?id=${p.id}'" style="cursor:pointer" id="product-row-${p.id}">
+      <td>
+        <a href="product-detail.html?id=${p.id}" onclick="event.stopPropagation()" style="font-weight:500">${p.name}</a>
+        <div style="font-size:11px;color:var(--color-muted);font-family:'IBM Plex Mono',monospace">${p.id}</div>
+      </td>
+      <td style="font-size:13px;color:var(--color-muted)">${p.family}</td>
+      <td class="mono">${p.version}</td>
+      <td class="text-center"><span class="badge badge-${p.status}" role="status">${PS.statusLabel(p.status)}</span></td>
+      <td style="font-size:13px">${p.effectiveFrom || '—'}</td>
+      <td style="font-size:13px" ${toStyle}>${effectiveTo || '—'}${isExpiring ? ' ⚠' : ''}</td>
+      <td style="font-size:13px">
+        <div>${p.lastModified}</div>
+        <div style="font-size:12px;color:var(--color-muted)">by ${p.lastModifiedBy}</div>
+      </td>
+      <td class="text-center">${pendingIcon}</td>
+      <td onclick="event.stopPropagation()">
+        <div class="table-actions">
+          <a href="product-detail.html?id=${p.id}" class="btn btn-ghost btn-sm">View</a>
+          <button class="btn btn-ghost btn-sm" onclick="handleClone('${p.id}')">Clone</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleRowMenu(event,'${p.id}')" aria-label="More options">
+            <svg width="14" height="14" viewBox="0 0 256 256" fill="none"><path d="M140 128a12 12 0 11-12-12 12 12 0 0112 12zm56-12a12 12 0 100 24 12 12 0 000-24zm-136 0a12 12 0 100 24 12 12 0 000-24z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('pagination-info').textContent = `Showing 1–${rows.length} of ${rows.length}`;
+}
+
+function getFilteredProducts() {
+  let data = [...PS.data.products];
+  if (_currentStatus !== 'all') data = data.filter(p => p.status === _currentStatus);
+  if (_currentFamily !== 'all') data = data.filter(p => p.family === _currentFamily);
+  const q = document.getElementById('product-search')?.value.toLowerCase() || '';
+  if (q) data = data.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+  if (_sortKey) data.sort((a,b) => {
+    const av = a[_sortKey] || '', bv = b[_sortKey] || '';
+    return av < bv ? -_sortDir : av > bv ? _sortDir : 0;
+  });
+  return data;
+}
+
+function filterByStatus(status) {
+  _currentStatus = status;
+  document.getElementById('status-filter-menu')?.classList.add('hidden');
+  renderProductsTable();
+}
+function filterByFamily(family) {
+  _currentFamily = family;
+  document.getElementById('family-filter-menu')?.classList.add('hidden');
+  renderProductsTable();
+}
+function filterProducts() { renderProductsTable(); }
+function resetFilters() {
+  _currentStatus = 'all'; _currentFamily = 'all';
+  document.getElementById('product-search').value = '';
+  renderProductsTable();
+}
+function sortTable(key) {
+  if (_sortKey === key) _sortDir *= -1; else { _sortKey = key; _sortDir = 1; }
+  document.querySelectorAll('.sort-icon').forEach(el => el.textContent = '↕');
+  const icon = document.getElementById(`sort-${key}`);
+  if (icon) icon.textContent = _sortDir === 1 ? '↑' : '↓';
+  renderProductsTable();
+}
+
+function isWithin30Days(dateStr) {
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return false;
+    const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    const d = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]));
+    const diff = (d - new Date()) / (1000*60*60*24);
+    return diff >= 0 && diff <= 30;
+  } catch { return false; }
+}
+
+/* ── Quick Actions Dropdown ──────────────────────────────── */
+function toggleQuickActions() {
+  const menu = document.getElementById('quick-actions-menu');
+  menu.classList.toggle('hidden');
+}
+function handleQuickAction(action) {
+  document.getElementById('quick-actions-menu').classList.add('hidden');
+  if (action === 'new-product') {
+    PS.openModal(`
+      <div class="modal-header">
+        <h2 class="modal-title">New Product</h2>
+        <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="new-product-name">Product Name <span class="required">*</span></label>
+          <input type="text" id="new-product-name" class="form-control" placeholder="e.g. Private Car Comprehensive">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="new-product-family">Insurance Family <span class="required">*</span></label>
+          <select id="new-product-family" class="form-control">
+            <option value="">Select family…</option>
+            ${PS.data.productFamilies.map(family => `<option>${family}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="new-product-desc">Description</label>
+          <textarea id="new-product-desc" class="form-control" rows="3" placeholder="Brief product description…"></textarea>
+        </div>
+        <div class="callout callout-info">
+          <div class="callout-body">
+            <div class="callout-title">New products start as Draft</div>
+            You can configure coverage, rating, eligibility, and more from the Product Catalogue once created.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="createProduct()">Create Product</button>
+      </div>
+    `);
+  } else if (action === 'clone-product') {
+    PS.actionResult('info', 'Clone Product', 'Select a product from the table to clone it.');
+  } else if (action === 'run-simulation') {
+    window.location.href = 'simulation-studio.html';
+  }
+}
+
+function createProduct() {
+  const name = document.getElementById('new-product-name')?.value.trim();
+  const family = document.getElementById('new-product-family')?.value;
+  if (!name || !family) { PS.actionResult('error', 'Validation error', 'Please fill in all required fields.'); return; }
+  PS.closeModal();
+  PS.actionResult('success', 'Product created', `"${name}" has been created as a draft.`);
+}
+
+/* ── Status/Family filter dropdowns ─────────────────────── */
+function toggleStatusFilter() {
+  const menu = document.getElementById('status-filter-menu');
+  const fam = document.getElementById('family-filter-menu');
+  fam.classList.add('hidden');
+  menu.classList.toggle('hidden');
+}
+function toggleFamilyFilter() {
+  const menu = document.getElementById('family-filter-menu');
+  const stat = document.getElementById('status-filter-menu');
+  stat.classList.add('hidden');
+  menu.classList.toggle('hidden');
+}
+
+/* ── Clone/Row menu ──────────────────────────────────────── */
+function handleClone(id) {
+  const p = PS.data.products.find(x => x.id === id);
+  PS.actionResult('success', 'Clone initiated', `Cloning "${p.name}" — a new draft will be created.`);
+}
+function toggleRowMenu(event, id) {
+  event.stopPropagation();
+  const existing = document.getElementById(`row-menu-${id}`);
+  if (existing) { existing.remove(); return; }
+  // Remove any other row menus
+  document.querySelectorAll('[id^="row-menu-"]').forEach(m => m.remove());
+  const btn = event.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.id = `row-menu-${id}`;
+  menu.className = 'dropdown-menu';
+  menu.style.cssText = `position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth - rect.right}px;z-index:999`;
+  menu.innerHTML = `
+    <div class="dropdown-item" onclick="window.location.href='product-detail.html?id=${id}'">View Detail</div>
+    <div class="dropdown-item" onclick="handleClone('${id}');document.getElementById('row-menu-${id}')?.remove()">Clone Version</div>
+    <div class="dropdown-sep"></div>
+    <div class="dropdown-item danger" onclick="confirmRetire('${id}');document.getElementById('row-menu-${id}')?.remove()">Retire</div>
+  `;
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), {once:true}), 0);
+}
+
+function confirmRetire(id) {
+  const p = PS.data.products.find(x => x.id === id);
+  PS.openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Retire Product Version</h2>
+      <button class="btn btn-icon" onclick="PS.closeModal()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 256 256" fill="none"><path d="M205.66 194.34a8 8 0 01-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 01-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0111.32-11.32L128 116.69l66.34-66.35a8 8 0 0111.32 11.32L139.31 128z" fill="currentColor"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-warning mb-4">
+        <div class="callout-body">
+          <div class="callout-title">This action cannot be undone</div>
+          Retired products cannot be re-activated. A new version must be created to replace it.
+        </div>
+      </div>
+      <p style="margin-bottom:16px">You are about to retire <strong>${p.name} (${p.version})</strong>. This will mark the version as Retired and remove it from active listings.</p>
+      <div class="form-group">
+        <label class="form-label">Type the version ID to confirm: <code style="font-family:monospace;background:var(--color-surface);padding:2px 6px;border-radius:4px">${p.version}</code></label>
+        <input type="text" id="retire-confirm-input" class="form-control" placeholder="Type version ID…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="PS.closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="executeRetire('${id}','${p.version}')">Retire Version</button>
+    </div>
+  `, 'modal-sm');
+}
+
+function executeRetire(id, version) {
+  const input = document.getElementById('retire-confirm-input')?.value.trim();
+  if (input !== version) { PS.actionResult('error', 'Confirmation mismatch', 'Please type the exact version ID to confirm.'); return; }
+  PS.closeModal();
+  PS.actionResult('success', 'Version retired', `Version ${version} has been retired.`);
+}
+</script>
+<script src="assets/prototype-app.js"></script>
+</body>
+</html>
